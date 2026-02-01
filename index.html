@@ -777,7 +777,7 @@
   <div class="quick-add">
     <div class="quick-add-inner">
       <input type="text" id="quick-input" placeholder="Make a wish..." enterkeyhint="send">
-      <button onclick="quickAdd()">✨ Wish</button>
+      <button onclick="smartAdd()">✨ Wish</button>
     </div>
   </div>
 
@@ -934,6 +934,12 @@
     document.getElementById('quick-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') quickAdd();
     });
+
+    function smartAdd() {
+      const input = document.getElementById("quick-input");
+      const title = input.value.trim();
+      if (!title) { openNewTask(); } else { quickAdd(); }
+    }
 
     function quickAdd() {
       const input = document.getElementById('quick-input');
@@ -1155,7 +1161,7 @@
       const newIdx = idx + direction;
       if (newIdx < 0 || newIdx >= COLUMN_ORDER.length) return;
       
-      task.column = COLUMN_ORDER[newIdx];
+      task.column = COLUMN_ORDER[newIdx]; if (COLUMN_ORDER[newIdx] === "done") closeViewModal(); if (COLUMN_ORDER[newIdx] === "done") closeViewModal();
       
       if (viewingTaskId === id) viewTask(id);
       renderAll();
