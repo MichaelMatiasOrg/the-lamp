@@ -556,6 +556,93 @@
       font-size: 0.8rem;
     }
 
+    /* === RECURRING PANEL === */
+    .recurring-panel {
+      display: none;
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--bg-card);
+      border-left: 1px solid var(--border);
+      padding: 16px;
+      height: calc(100vh - 60px);
+      overflow-y: auto;
+      position: fixed;
+      right: 0;
+      top: 60px;
+    }
+    body.kanban-mode .recurring-panel { display: block; }
+    .recurring-header {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .recurring-task {
+      padding: 12px;
+      background: var(--bg-input);
+      border-radius: var(--radius-md);
+      margin-bottom: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .recurring-task:hover { background: rgba(255,255,255,0.05); }
+    .recurring-task-title { color: var(--text-primary); margin-bottom: 4px; }
+    .recurring-task-status { font-size: 0.75rem; color: var(--text-tertiary); }
+    @media (max-width: 768px) {
+      .recurring-panel { display: none !important; }
+    }
+
+    /* === SUBTASKS === */
+    .subtasks-section {
+      margin-top: 16px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+    }
+    .subtasks-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .subtasks-title { font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); }
+    .subtasks-progress { font-size: 0.8rem; color: var(--accent); }
+    .subtask-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .subtask-item:last-child { border-bottom: none; }
+    .subtask-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+    .subtask-text { flex: 1; font-size: 0.9rem; color: var(--text-primary); }
+    .subtask-text.completed { text-decoration: line-through; color: var(--text-secondary); }
+    .subtask-delete { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.8rem; opacity: 0.5; }
+    .subtask-delete:hover { opacity: 1; color: var(--danger); }
+    .add-subtask-form { display: flex; gap: 8px; margin-top: 12px; }
+    .add-subtask-input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-size: 0.85rem;
+    }
+    .add-subtask-btn {
+      padding: 8px 16px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-weight: 500;
+    }
+
     /* === COMMENTS === */
     .comments-section {
       margin-top: 32px;
@@ -1490,6 +1577,12 @@
   
   <!-- Kanban Board (Desktop only) -->
   <div class="kanban-container" id="kanban-container"></div>
+  
+  <!-- Recurring Tasks Panel (Desktop only) -->
+  <div class="recurring-panel" id="recurring-panel">
+    <div class="recurring-header">🔄 Recurring</div>
+    <div class="recurring-tasks" id="recurring-tasks"></div>
+  </div>
 
   <nav class="bottom-nav">
     <button class="nav-item active" data-view="tasks" onclick="switchView('tasks')">
@@ -1538,6 +1631,20 @@
         <div class="view-journey">
           <h4>🗺️ User Journey</h4>
           <p id="view-journey"></p>
+        </div>
+      </div>
+
+      <div class="view-section" id="subtasks-section">
+        <div class="subtasks-section">
+          <div class="subtasks-header">
+            <span class="subtasks-title">📋 Subtasks</span>
+            <span class="subtasks-progress" id="subtasks-progress"></span>
+          </div>
+          <div id="subtasks-list"></div>
+          <div class="add-subtask-form">
+            <input type="text" class="add-subtask-input" id="add-subtask-input" placeholder="Add a subtask..." onkeypress="if(event.key==='Enter')addSubtask()">
+            <button class="add-subtask-btn" onclick="addSubtask()">Add</button>
+          </div>
         </div>
       </div>
 
@@ -1973,17 +2080,22 @@
       const container = document.getElementById('kanban-container');
       if (!container) return;
       
+      // Render recurring panel separately
+      renderRecurring();
+      
       // Order: Inbox, To Do, In Progress, Review (skip Genie and Done for main Kanban view, add as last columns)
       const kanbanColumns = ['genie', 'inbox', 'todo', 'in_progress', 'review', 'done'];
       
       container.innerHTML = kanbanColumns.map(col => {
-        let colTasks = tasks.filter(t => t.column === col);
+        // Filter out recurring tasks from main board unless filtering by recurring
+        let colTasks = tasks.filter(t => t.column === col && (typeFilter === 'recurring' || t.type !== 'recurring'));
         
         // Apply type filter (except for genie)
         if (col !== 'genie' && typeFilter !== 'all') {
           colTasks = colTasks.filter(t => {
             if (typeFilter === 'laptop') return t.needsLaptop;
             if (typeFilter === 'mobile') return t.needsMobile;
+            if (typeFilter === 'recurring') return t.type === 'recurring';
             if (t.needsLaptop) return false;
             if (t.needsMobile) return false;
             return (t.type || 'single') === typeFilter;
@@ -2109,6 +2221,9 @@
         journeySection.style.display = 'none';
       }
       
+      // Subtasks
+      renderSubtasks(task);
+      
       // Meta
       const pIcon = task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢';
       document.getElementById('view-meta').innerHTML = `
@@ -2217,6 +2332,93 @@
       } catch (e) {
         changelogDiv.innerHTML = '<span style="color:var(--text-tertiary);font-size:0.8rem;">Could not load changelog</span>';
       }
+    }
+
+    function renderRecurring() {
+      const panel = document.getElementById('recurring-panel');
+      const container = document.getElementById('recurring-tasks');
+      if (!panel || !container) return;
+      
+      // Hide panel when filtering by recurring (they show in main board)
+      if (typeFilter === 'recurring') {
+        panel.style.display = 'none';
+        return;
+      } else {
+        panel.style.display = '';
+      }
+      
+      const recurringTasks = tasks.filter(t => t.type === 'recurring');
+      
+      if (recurringTasks.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-tertiary);font-size:0.8rem;">No recurring tasks</div>';
+      } else {
+        container.innerHTML = recurringTasks.map(task => `
+          <div class="recurring-task" onclick="viewTask('${task.id}')">
+            <div class="recurring-task-title">${task.title}</div>
+            <div class="recurring-task-status">${COLUMNS[task.column].icon} ${COLUMNS[task.column].label}</div>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderSubtasks(task) {
+      const list = document.getElementById('subtasks-list');
+      const progress = document.getElementById('subtasks-progress');
+      const subtasks = task.subtasks || [];
+      
+      if (subtasks.length === 0) {
+        list.innerHTML = '<div style="color:var(--text-tertiary);font-size:0.85rem;padding:8px 0;">No subtasks yet</div>';
+        progress.textContent = '';
+      } else {
+        const completed = subtasks.filter(s => s.done).length;
+        progress.textContent = `${completed}/${subtasks.length} done`;
+        list.innerHTML = subtasks.map((s, i) => `
+          <div class="subtask-item">
+            <input type="checkbox" class="subtask-checkbox" ${s.done ? 'checked' : ''} onchange="toggleSubtask(${i})">
+            <span class="subtask-text ${s.done ? 'completed' : ''}">${escapeHtml(s.text)}</span>
+            <button class="subtask-delete" onclick="deleteSubtask(${i})">✕</button>
+          </div>
+        `).join('');
+      }
+    }
+
+    async function addSubtask() {
+      const input = document.getElementById('add-subtask-input');
+      const text = input.value.trim();
+      if (!text || !viewingTaskId) return;
+
+      const task = tasks.find(t => t.id === viewingTaskId);
+      if (!task) return;
+
+      if (!task.subtasks) task.subtasks = [];
+      task.subtasks.push({ text, done: false });
+      input.value = '';
+      renderSubtasks(task);
+      await saveTasks();
+    }
+
+    async function toggleSubtask(index) {
+      const task = tasks.find(t => t.id === viewingTaskId);
+      if (!task || !task.subtasks || !task.subtasks[index]) return;
+
+      task.subtasks[index].done = !task.subtasks[index].done;
+      renderSubtasks(task);
+      await saveTasks();
+    }
+
+    async function deleteSubtask(index) {
+      const task = tasks.find(t => t.id === viewingTaskId);
+      if (!task || !task.subtasks) return;
+
+      task.subtasks.splice(index, 1);
+      renderSubtasks(task);
+      await saveTasks();
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     function closeViewModal() {
