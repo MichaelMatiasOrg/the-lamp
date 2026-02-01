@@ -405,7 +405,7 @@
       min-height: 100vh;
       padding: 20px;
       padding-top: calc(20px + var(--safe-top));
-      padding-bottom: calc(140px + var(--safe-bottom));
+      padding-bottom: 20px;
     }
 
     .modal-header {
@@ -536,7 +536,6 @@
     .comments-section {
       margin-top: 32px;
       padding-top: 24px;
-      padding-bottom: 100px;
       border-top: 1px solid var(--border);
     }
 
@@ -620,14 +619,11 @@
 
     /* === MOVE BUTTONS === */
     .move-actions {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
       display: flex;
       gap: 10px;
-      padding: 16px 20px;
+      padding: 16px 0;
       padding-bottom: calc(16px + var(--safe-bottom));
-      background: var(--bg-glass);
-      backdrop-filter: blur(20px);
+      margin-top: 20px;
       border-top: 1px solid var(--border);
     }
 
@@ -1524,16 +1520,9 @@
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addComment(); }
     });
     
-    // Hide footer when typing comment (mobile keyboard issue)
-    const commentInput = document.getElementById('comment-input');
-    const moveActions = document.querySelector('.move-actions');
-    commentInput.addEventListener('focus', () => {
-      if (moveActions) moveActions.style.display = 'none';
-      // Scroll input into view after a short delay for keyboard
-      setTimeout(() => commentInput.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
-    });
-    commentInput.addEventListener('blur', () => {
-      if (moveActions) moveActions.style.display = 'flex';
+    // Scroll comment input into view when focused (for mobile keyboard)
+    document.getElementById('comment-input').addEventListener('focus', () => {
+      setTimeout(() => document.getElementById('comment-input').scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
     });
 
     loadTasks();
