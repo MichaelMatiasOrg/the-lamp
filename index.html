@@ -799,6 +799,23 @@
       animation: celebrate 0.6s ease-out;
     }
 
+
+    /* === UNREAD BADGE === */
+    .unread-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      background: var(--accent);
+      color: #000;
+      font-size: 0.65rem;
+      font-weight: 700;
+      border-radius: 9px;
+      margin-left: 6px;
+    }
+
   </style>
 </head>
 <body>
@@ -976,6 +993,13 @@
       if (e.key === 'Enter') quickAdd();
     });
 
+    function getUnreadGenieComments(task) {
+      if (!task.comments || task.comments.length === 0) return 0;
+      const seenAt = task.seenAt || 0;
+      return task.comments.filter(c => c.author === "genie" && new Date(c.time).getTime() > seenAt).length;
+    }
+
+
     function smartAdd() {
       const input = document.getElementById("quick-input");
       const title = input.value.trim();
@@ -1112,7 +1136,7 @@
           <div class="task-desc-preview ${isShort ? 'short' : ''}">${desc}</div>
           <div class="task-footer">
             <span>${task.created}</span>
-            ${commentCount > 0 ? `<span class="comments-count">💬 ${commentCount}</span>` : ''}
+            `${(() => { const unread = getUnreadGenieComments(task); return unread > 0 ? `<span class="unread-badge">🧞 ${unread}</span>` : ""; })()}${commentCount > 0 ? `<span class="comments-count">💬 ${commentCount}</span>` : ""}`
           </div>
         </div>`;
       }).join('');
@@ -1136,6 +1160,7 @@
       if (!task) return;
       
       viewingTaskId = id;
+      task.seenAt = Date.now(); saveTasks();
       document.getElementById('view-title').textContent = task.title;
       document.getElementById('view-desc').textContent = task.description || 'No description provided';
       
