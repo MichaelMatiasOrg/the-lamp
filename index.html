@@ -365,6 +365,11 @@
     .empty-state h3 { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 8px; }
     .empty-state p { font-size: 0.85rem; }
 
+    /* === DESKTOP CONTROLS (hidden on mobile) === */
+    .desktop-controls {
+      display: none;
+    }
+
     /* === BOTTOM NAV === */
     .bottom-nav {
       position: fixed;
@@ -1126,6 +1131,124 @@
       .task-container { display: none; }
       .mission-tabs { display: none; }
       .type-filter { display: none; }
+      
+      /* Desktop Control Bar - always visible at top */
+      .desktop-controls {
+        display: block;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 24px;
+        position: sticky;
+        top: 60px;
+        z-index: 90;
+      }
+      
+      .desktop-controls-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        max-width: 1800px;
+        margin: 0 auto;
+        gap: 24px;
+      }
+      
+      .desktop-nav {
+        display: flex;
+        gap: 4px;
+      }
+      
+      .desktop-nav-btn {
+        padding: 10px 18px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      
+      .desktop-nav-btn:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--border-light);
+      }
+      
+      .desktop-nav-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #000;
+        font-weight: 600;
+      }
+      
+      .desktop-filters {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .filter-label {
+        font-size: 0.8rem;
+        color: var(--text-tertiary);
+        margin-right: 4px;
+      }
+      
+      .desktop-filter-btn {
+        padding: 8px 14px;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        color: var(--text-tertiary);
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      
+      .desktop-filter-btn:hover {
+        background: var(--bg-card);
+        color: var(--text-secondary);
+      }
+      
+      .desktop-filter-btn.active {
+        background: var(--accent-dim);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      
+      .desktop-actions {
+        display: flex;
+        gap: 8px;
+      }
+      
+      .desktop-action-btn {
+        padding: 10px 20px;
+        background: var(--accent);
+        border: none;
+        border-radius: var(--radius-md);
+        color: #000;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      
+      .desktop-action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(255, 214, 10, 0.3);
+      }
+      
+      .desktop-action-btn.secondary {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+      }
+      
+      .desktop-action-btn.secondary:hover {
+        background: var(--bg-card-hover);
+        box-shadow: none;
+      }
+      
+      /* Hide bottom nav on desktop */
+      .bottom-nav { display: none; }
       .task-container {
         padding: 20px 40px 60px;
         max-width: 1400px;
@@ -1221,6 +1344,28 @@
     <button class="filter-btn active" data-filter="single" onclick="setTypeFilter('single')">📌 One-time</button>
     <button class="filter-btn" data-filter="recurring" onclick="setTypeFilter('recurring')">🔄 Recurring</button>
     <button class="filter-btn" data-filter="laptop" onclick="setTypeFilter('laptop')">💻 Laptop</button>
+  </div>
+
+  <!-- Desktop Control Bar (replaces bottom nav on desktop) -->
+  <div class="desktop-controls" id="desktop-controls">
+    <div class="desktop-controls-inner">
+      <div class="desktop-nav">
+        <button class="desktop-nav-btn active" data-view="tasks" onclick="switchView('tasks')">🪔 Wishes</button>
+        <button class="desktop-nav-btn" data-view="history" onclick="switchView('history')">📜 History</button>
+        <button class="desktop-nav-btn" data-view="stats" onclick="switchView('stats')">📊 Stats</button>
+      </div>
+      <div class="desktop-filters" id="desktop-type-filter">
+        <span class="filter-label">Filter:</span>
+        <button class="desktop-filter-btn" data-filter="all" onclick="setTypeFilter('all')">All</button>
+        <button class="desktop-filter-btn active" data-filter="single" onclick="setTypeFilter('single')">📌 One-time</button>
+        <button class="desktop-filter-btn" data-filter="recurring" onclick="setTypeFilter('recurring')">🔄 Recurring</button>
+        <button class="desktop-filter-btn" data-filter="laptop" onclick="setTypeFilter('laptop')">💻 Laptop</button>
+      </div>
+      <div class="desktop-actions">
+        <button class="desktop-action-btn" onclick="openNewTask()">✨ New Wish</button>
+        <button class="desktop-action-btn secondary" onclick="openLampFeedback()">🐛 Lamp Feedback</button>
+      </div>
+    </div>
   </div>
 
   <main class="task-container" id="task-container"></main>
@@ -1377,10 +1522,15 @@
 
     function setTypeFilter(filter) {
       typeFilter = filter;
+      // Update mobile filter buttons
       document.querySelectorAll(".filter-btn").forEach(b => 
         b.classList.toggle("active", b.dataset.filter === filter)
       );
-      renderTasks();
+      // Update desktop filter buttons
+      document.querySelectorAll(".desktop-filter-btn").forEach(b => 
+        b.classList.toggle("active", b.dataset.filter === filter)
+      );
+      renderAll();
     }
 
 
@@ -2010,13 +2160,15 @@
     function switchView(view) {
       console.log('Switching to view:', view);
       currentView = view;
+      // Update mobile nav
       document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
+      // Update desktop nav
+      document.querySelectorAll('.desktop-nav-btn').forEach(n => n.classList.toggle('active', n.dataset.view === view));
       // Force scroll to top when switching views
       window.scrollTo(0, 0);
-      document.getElementById('content').scrollTop = 0;
-      if (view === 'stats') renderStats();
-      else if (view === 'history') renderHistory();
-      else renderTasks();
+      const content = document.getElementById('content');
+      if (content) content.scrollTop = 0;
+      renderAll();
     }
 
     let historyFilter = 'all';
