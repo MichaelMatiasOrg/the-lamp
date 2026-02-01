@@ -2425,14 +2425,21 @@
       document.getElementById('comment-image-preview').innerHTML = '';
     }
 
-    function addComment() {
+    async function addComment() {
       const input = document.getElementById('comment-input');
+      const sendBtn = document.querySelector('.comment-send');
       const text = input.value.trim();
       if (!text && !commentImageData) return;
       if (!viewingTaskId) return;
 
       const task = tasks.find(t => t.id === viewingTaskId);
       if (!task) return;
+
+      // Show loading state
+      const originalBtnText = sendBtn.textContent;
+      sendBtn.textContent = '...';
+      sendBtn.disabled = true;
+      sendBtn.style.opacity = '0.5';
 
       if (!task.comments) task.comments = [];
       const comment = {
@@ -2446,11 +2453,33 @@
       }
       
       task.comments.push(comment);
-
       input.value = '';
       clearCommentImage();
+
+      try {
+        await saveTasks();
+        // Show success feedback
+        sendBtn.textContent = '✓';
+        sendBtn.style.background = 'var(--success)';
+        setTimeout(() => {
+          sendBtn.textContent = originalBtnText;
+          sendBtn.disabled = false;
+          sendBtn.style.opacity = '1';
+          sendBtn.style.background = '';
+        }, 1000);
+      } catch (e) {
+        // Show error feedback
+        sendBtn.textContent = '✗';
+        sendBtn.style.background = 'var(--danger)';
+        setTimeout(() => {
+          sendBtn.textContent = originalBtnText;
+          sendBtn.disabled = false;
+          sendBtn.style.opacity = '1';
+          sendBtn.style.background = '';
+        }, 2000);
+      }
+      
       viewTask(viewingTaskId);
-      saveTasks();
     }
 
     function moveTask(id, direction) {
