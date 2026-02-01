@@ -897,6 +897,8 @@
         <div class="view-meta" id="view-meta"></div>
       </div>
 
+      <div class="view-section" id="celebration-image" style="display:none"></div>
+
       <div class="comments-section">
         <div class="comments-title">💬 Activity Log</div>
         <div id="comments-list"></div>
@@ -1201,6 +1203,15 @@
         <div class="meta-item">${COLUMNS[task.column].icon} ${COLUMNS[task.column].label}</div>
       `;
 
+      // Celebration image
+      const celebrationDiv = document.getElementById('celebration-image');
+      if (task.celebrationImage && task.column === 'done') {
+        celebrationDiv.innerHTML = `<img src="${task.celebrationImage}" alt="Celebration" style="width:100%;border-radius:12px;margin:12px 0;">`;
+        celebrationDiv.style.display = 'block';
+      } else {
+        celebrationDiv.style.display = 'none';
+      }
+
       // Comments
       const comments = task.comments || [];
       if (comments.length === 0) {
@@ -1275,11 +1286,36 @@
       const targetCol = COLUMN_ORDER[newIdx];
       if (targetCol === 'genie') return;
       
-      task.column = targetCol; if (targetCol === "done") { showGrantCelebration(); setTimeout(closeViewModal, 600); }
+      task.column = targetCol;
+      
+      if (targetCol === "done") {
+        showGrantCelebration();
+        setTimeout(closeViewModal, 600);
+        // Generate celebration image
+        generateCelebrationImage(task);
+      }
       
       if (viewingTaskId === id) viewTask(id);
       renderAll();
       saveTasks();
+    }
+
+    async function generateCelebrationImage(task) {
+      try {
+        const res = await fetch('/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskTitle: task.title })
+        });
+        const data = await res.json();
+        if (data.ok && data.imageUrl) {
+          task.celebrationImage = data.imageUrl;
+          saveTasks();
+          renderAll();
+        }
+      } catch (e) {
+        console.log('Image generation failed:', e);
+      }
     }
 
     function approveIdea(id) {

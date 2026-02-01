@@ -253,6 +253,77 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // POST /api/generate-image - generate celebration image via OpenAI
+  if (req.url === '/api/generate-image' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { taskTitle } = JSON.parse(body);
+        const apiKey = process.env.OPENAI_API_KEY;
+        
+        if (!apiKey) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'OpenAI API key not configured' }));
+          return;
+        }
+
+        const prompt = `A cute, celebratory cartoon illustration for completing the task: "${taskTitle}". Style: minimal, friendly, warm colors, simple shapes, like a greeting card. No text.`;
+        
+        const requestData = JSON.stringify({
+          model: 'dall-e-3',
+          prompt: prompt,
+          n: 1,
+          size: '1024x1024',
+          quality: 'standard'
+        });
+
+        const options = {
+          hostname: 'api.openai.com',
+          path: '/v1/images/generations',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Length': Buffer.byteLength(requestData)
+          }
+        };
+
+        const apiReq = https.request(options, (apiRes) => {
+          let data = '';
+          apiRes.on('data', chunk => data += chunk);
+          apiRes.on('end', () => {
+            try {
+              const result = JSON.parse(data);
+              if (result.data && result.data[0] && result.data[0].url) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ ok: true, imageUrl: result.data[0].url }));
+              } else {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'No image generated', details: result }));
+              }
+            } catch (e) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: e.message }));
+            }
+          });
+        });
+
+        apiReq.on('error', (e) => {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: e.message }));
+        });
+
+        apiReq.write(requestData);
+        apiReq.end();
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
   // POST /api/restore - force refresh from gist
   if (req.url === '/api/restore' && req.method === 'POST') {
     try {
