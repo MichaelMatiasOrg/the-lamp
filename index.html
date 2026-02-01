@@ -897,15 +897,16 @@
         font-size: 1rem;
       }
       
-      /* Edit modal wider and better layout */
+      /* Edit modal - centered, not full screen */
       .edit-modal .modal-content {
-        max-width: 800px;
-        margin: 40px auto;
+        max-width: 550px;
+        margin: 80px auto;
         background: var(--bg-secondary);
         border-radius: var(--radius-lg);
-        max-height: calc(100vh - 80px);
+        max-height: calc(100vh - 160px);
         display: flex;
         flex-direction: column;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
       }
       .edit-modal .edit-header {
         padding: 20px 24px;
@@ -1119,6 +1120,22 @@
       }
       .kanban-empty .icon { font-size: 2rem; margin-bottom: 10px; opacity: 0.4; }
       .kanban-empty p { font-size: 0.8rem; }
+      
+      /* Drag and drop styles */
+      .kanban-card.dragging {
+        opacity: 0.5;
+        transform: rotate(2deg);
+      }
+      
+      .kanban-column.drag-over {
+        background: var(--accent-dim);
+        border-color: var(--accent);
+      }
+      
+      .kanban-column-tasks.drag-over {
+        background: rgba(255,214,10,0.05);
+        min-height: 100px;
+      }
       
       /* Hide tabs on desktop when Kanban is active */
       body.kanban-mode .mission-tabs { display: none; }
@@ -1773,7 +1790,7 @@
               const commentCount = (task.comments || []).length;
               const unread = getUnreadGenieComments(task);
               
-              return `<div class="kanban-card priority-${task.priority}" onclick="viewTask('${task.id}')">
+              return `<div class="kanban-card priority-${task.priority}" draggable="true" data-task-id="${task.id}" onclick="viewTask('${task.id}')" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)">
                 <div class="kanban-card-title">${task.title}</div>
                 ${desc ? `<div class="kanban-card-desc">${desc}${task.description?.length > 100 ? '...' : ''}</div>` : ''}
                 <div class="kanban-card-footer">
@@ -1801,7 +1818,7 @@
             </div>
             <span class="kanban-column-count">${colTasks.length}</span>
           </div>
-          <div class="kanban-column-tasks">${tasksHTML}</div>
+          <div class="kanban-column-tasks" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${col}')">${tasksHTML}</div>
         </div>`;
       }).join('');
     }
@@ -2215,6 +2232,63 @@
         container.innerHTML = filterHtml + '<div style="background:var(--bg-secondary);border-radius:var(--radius-lg);overflow:hidden;">' + items + '</div>';
       } catch (e) {
         container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--error)">Error loading history</div>';
+      }
+    }
+    
+    // Drag and Drop for Kanban
+    let draggedTaskId = null;
+    
+    function handleDragStart(e) {
+      draggedTaskId = e.target.dataset.taskId;
+      e.target.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedTaskId);
+    }
+    
+    function handleDragEnd(e) {
+      e.target.classList.remove('dragging');
+      document.querySelectorAll('.kanban-column-tasks').forEach(el => el.classList.remove('drag-over'));
+      draggedTaskId = null;
+    }
+    
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      e.currentTarget.classList.add('drag-over');
+    }
+    
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+    
+    async function handleDrop(e, targetColumn) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+      
+      const taskId = e.dataTransfer.getData('text/plain') || draggedTaskId;
+      if (!taskId) return;
+      
+      const task = tasks.find(t => t.id === taskId);
+      if (!task || task.column === targetColumn) return;
+      
+      // Update locally
+      const oldColumn = task.column;
+      task.column = targetColumn;
+      renderKanban();
+      
+      // Save to server
+      try {
+        await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'update', taskId, updates: { column: targetColumn } })
+        });
+        updateStatus('online', 'SYNCED');
+      } catch (err) {
+        // Revert on error
+        task.column = oldColumn;
+        renderKanban();
+        updateStatus('error', 'SYNC FAILED');
       }
     }
     
