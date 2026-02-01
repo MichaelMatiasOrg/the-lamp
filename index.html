@@ -405,7 +405,7 @@
       min-height: 100vh;
       padding: 20px;
       padding-top: calc(20px + var(--safe-top));
-      padding-bottom: 20px;
+      padding-bottom: calc(100px + var(--safe-bottom));
     }
 
     .modal-header {
@@ -619,12 +619,19 @@
 
     /* === MOVE BUTTONS === */
     .move-actions {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
       display: flex;
       gap: 10px;
-      padding: 16px 0;
+      padding: 16px 20px;
       padding-bottom: calc(16px + var(--safe-bottom));
-      margin-top: 20px;
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
+      z-index: 210;
     }
 
     .move-btn {
