@@ -54,8 +54,9 @@ async function redisSet(key, value) {
   if (!UPSTASH_URL || !UPSTASH_TOKEN) return false;
   
   return new Promise((resolve, reject) => {
-    const url = new URL(`${UPSTASH_URL}/set/${key}`);
-    const postData = JSON.stringify(value);
+    const url = new URL(UPSTASH_URL);
+    // Use Upstash command format: POST with ["SET", key, value]
+    const postData = JSON.stringify(["SET", key, JSON.stringify(value)]);
     
     const req = https.request(url, {
       method: 'POST',
@@ -71,12 +72,16 @@ async function redisSet(key, value) {
           const result = JSON.parse(data);
           resolve(result.result === 'OK');
         } catch (e) {
+          console.error('Redis SET parse error:', e.message, data);
           resolve(false);
         }
       });
     });
     
-    req.on('error', () => resolve(false));
+    req.on('error', (e) => {
+      console.error('Redis SET error:', e.message);
+      resolve(false);
+    });
     req.write(postData);
     req.end();
   });
