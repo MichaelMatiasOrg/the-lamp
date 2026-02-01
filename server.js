@@ -22,47 +22,80 @@ const DEFAULT_DATA = { columns: ['genie', 'inbox', 'todo', 'in_progress', 'revie
 // In-memory cache
 let tasksCache = null;
 
-// Upstash Redis REST API - using fetch for simplicity
+// Upstash Redis REST API
 async function redisGet(key) {
   if (!UPSTASH_URL || !UPSTASH_TOKEN) {
     console.log('Redis: Missing URL or TOKEN');
     return null;
   }
   
-  try {
-    const res = await fetch(`${UPSTASH_URL}/get/${key}`, {
-      headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+  return new Promise((resolve) => {
+    const url = `${UPSTASH_URL}/get/${key}`;
+    
+    https.get(url, { headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const result = JSON.parse(data);
+          console.log('Redis GET response:', result.result ? 'has data' : 'empty');
+          if (result.result) {
+            resolve(JSON.parse(result.result));
+          } else {
+            resolve(null);
+          }
+        } catch (e) {
+          console.error('Redis GET parse error:', e.message);
+          resolve(null);
+        }
+      });
+    }).on('error', (e) => {
+      console.error('Redis GET error:', e.message);
+      resolve(null);
     });
-    const data = await res.json();
-    if (data.result) {
-      return JSON.parse(data.result);
-    }
-    console.log('Redis GET: no result');
-    return null;
-  } catch (e) {
-    console.error('Redis GET error:', e.message);
-    return null;
-  }
+  });
 }
 
 async function redisSet(key, value) {
   if (!UPSTASH_URL || !UPSTASH_TOKEN) return false;
   
-  try {
-    const res = await fetch(UPSTASH_URL, {
+  return new Promise((resolve) => {
+    const postData = JSON.stringify(["SET", key, JSON.stringify(value)]);
+    const url = new URL(UPSTASH_URL);
+    
+    const req = https.request({
+      hostname: url.hostname,
+      port: 443,
+      path: '/',
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${UPSTASH_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(["SET", key, JSON.stringify(value)])
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const result = JSON.parse(data);
+          console.log('Redis SET response:', result.result);
+          resolve(result.result === 'OK');
+        } catch (e) {
+          console.error('Redis SET parse error:', e.message);
+          resolve(false);
+        }
+      });
     });
-    const data = await res.json();
-    return data.result === 'OK';
-  } catch (e) {
-    console.error('Redis SET error:', e.message);
-    return false;
-  }
+    
+    req.on('error', (e) => {
+      console.error('Redis SET error:', e.message);
+      resolve(false);
+    });
+    
+    req.write(postData);
+    req.end();
+  });
 }
 
 // Get tasks - from cache or Redis
