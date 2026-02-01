@@ -1,14 +1,14 @@
 {
-  "name": "Genie Tasks",
-  "short_name": "Genie",
-  "description": "Task dashboard for Genie AI assistant",
+  "name": "The Lamp",
+  "short_name": "Lamp",
+  "description": "Mission control for your AI assistant",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1a2e",
-  "theme_color": "#1a1a2e",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧞</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪔</text></svg>",
       "sizes": "any",
       "type": "image/svg+xml"
     }
