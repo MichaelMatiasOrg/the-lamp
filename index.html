@@ -9,8 +9,6 @@
   <title>The Lamp</title>
   <link rel="manifest" href="/manifest.json">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=SF+Mono:wght@400;500&display=swap');
-    
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     
     :root {
@@ -41,14 +39,11 @@
       --radius-lg: 16px;
       --radius-xl: 20px;
       
-      --shadow: 0 4px 24px rgba(0,0,0,0.5);
-      --shadow-lg: 0 8px 40px rgba(0,0,0,0.6);
-      
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       
-      --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-      --font-mono: 'SF Mono', 'Menlo', 'Monaco', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      --font-mono: 'SF Mono', 'Menlo', monospace;
     }
 
     html, body {
@@ -94,20 +89,11 @@
     .logo-text {
       font-size: 1.1rem;
       font-weight: 600;
-      letter-spacing: -0.02em;
     }
 
-    .logo-text span {
-      color: var(--accent);
-    }
+    .logo-text span { color: var(--accent); }
 
     .status-bar {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .status-indicator {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -130,10 +116,7 @@
       50% { opacity: 0.5; }
     }
 
-    .status-dot.syncing {
-      background: var(--warning);
-      box-shadow: 0 0 8px var(--warning);
-    }
+    .status-dot.syncing { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
 
     /* === QUICK ADD === */
     .quick-add {
@@ -157,7 +140,6 @@
       border-radius: var(--radius-lg);
       color: var(--text-primary);
       font-size: 16px;
-      font-family: var(--font-sans);
       transition: all 0.2s;
     }
 
@@ -167,9 +149,7 @@
       box-shadow: 0 0 0 3px var(--accent-dim);
     }
 
-    .quick-add input::placeholder {
-      color: var(--text-tertiary);
-    }
+    .quick-add input::placeholder { color: var(--text-tertiary); }
 
     .quick-add button {
       padding: 14px 24px;
@@ -180,19 +160,9 @@
       font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
     }
 
-    .quick-add button:hover {
-      filter: brightness(1.1);
-      transform: scale(1.02);
-    }
-
-    .quick-add button:active {
-      transform: scale(0.98);
-    }
-
-    /* === MISSION TABS === */
+    /* === TABS === */
     .mission-tabs {
       display: flex;
       gap: 4px;
@@ -200,7 +170,6 @@
       background: var(--bg-secondary);
       overflow-x: auto;
       scrollbar-width: none;
-      -ms-overflow-style: none;
     }
 
     .mission-tabs::-webkit-scrollbar { display: none; }
@@ -218,13 +187,9 @@
       font-size: 0.85rem;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
-      white-space: nowrap;
     }
 
-    .mission-tab:hover {
-      background: var(--bg-card);
-    }
+    .mission-tab:hover { background: var(--bg-card); }
 
     .mission-tab.active {
       background: var(--bg-card);
@@ -245,12 +210,6 @@
       color: var(--accent);
     }
 
-    .mission-tab[data-col="inbox"] .icon { color: var(--warning); }
-    .mission-tab[data-col="todo"] .icon { color: var(--info); }
-    .mission-tab[data-col="in_progress"] .icon { color: var(--accent); }
-    .mission-tab[data-col="review"] .icon { color: var(--purple); }
-    .mission-tab[data-col="done"] .icon { color: var(--success); }
-
     /* === TASK CONTAINER === */
     .task-container {
       padding: 20px;
@@ -266,9 +225,9 @@
       border-radius: var(--radius-lg);
       padding: 18px;
       margin-bottom: 12px;
-      transition: all 0.2s;
       position: relative;
-      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s;
     }
 
     .task-card::before {
@@ -278,8 +237,7 @@
       top: 0;
       bottom: 0;
       width: 3px;
-      background: var(--border);
-      transition: background 0.2s;
+      border-radius: var(--radius-lg) 0 0 var(--radius-lg);
     }
 
     .task-card.priority-high::before { background: var(--danger); }
@@ -291,109 +249,54 @@
       border-color: var(--border-light);
     }
 
-    .task-card:active {
-      transform: scale(0.995);
-    }
-
-    .task-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
+    .task-card:active { transform: scale(0.995); }
 
     .task-title {
       font-size: 1rem;
       font-weight: 600;
       line-height: 1.4;
-      letter-spacing: -0.01em;
+      margin-bottom: 4px;
+    }
+
+    .task-preview {
+      font-size: 0.85rem;
+      color: var(--text-tertiary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .task-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      font-size: 0.75rem;
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
+    }
+
+    .task-footer .comments-count {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--info);
     }
 
     .task-badges {
       display: flex;
       gap: 6px;
-      flex-shrink: 0;
     }
 
     .badge {
-      padding: 4px 8px;
+      padding: 3px 6px;
       background: var(--bg-tertiary);
-      border-radius: var(--radius-sm);
-      font-size: 0.65rem;
-      font-weight: 500;
+      border-radius: 4px;
+      font-size: 0.6rem;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
     }
 
-    .badge.recurring {
-      background: var(--accent-dim);
-      color: var(--accent);
-    }
-
-    .task-desc {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      line-height: 1.5;
-      white-space: pre-wrap;
-    }
-
-    .task-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 14px;
-      padding-top: 14px;
-      border-top: 1px solid var(--border);
-    }
-
-    .task-meta-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.75rem;
-      font-family: var(--font-mono);
-      color: var(--text-tertiary);
-    }
-
-    .task-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 14px;
-    }
-
-    .task-action {
-      flex: 1;
-      padding: 12px;
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      color: var(--text-secondary);
-      font-size: 0.8rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .task-action:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-light);
-    }
-
-    .task-action:active {
-      transform: scale(0.98);
-    }
-
-    .task-action.primary {
-      background: var(--accent-dim);
-      border-color: transparent;
-      color: var(--accent);
-    }
-
-    .task-action.primary:hover {
-      background: var(--accent);
-      color: #000;
-    }
+    .badge.recurring { background: var(--accent-dim); color: var(--accent); }
 
     /* === EMPTY STATE === */
     .empty-state {
@@ -410,13 +313,8 @@
 
     .empty-state h3 {
       font-size: 1.1rem;
-      font-weight: 600;
       color: var(--text-secondary);
       margin-bottom: 8px;
-    }
-
-    .empty-state p {
-      font-size: 0.9rem;
     }
 
     /* === BOTTOM NAV === */
@@ -431,7 +329,6 @@
       padding-bottom: calc(12px + var(--safe-bottom));
       background: var(--bg-glass);
       backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
       z-index: 100;
     }
@@ -446,38 +343,251 @@
       border: none;
       color: var(--text-tertiary);
       font-size: 0.65rem;
-      font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
     }
 
-    .nav-item .icon {
-      font-size: 1.4rem;
-    }
+    .nav-item .icon { font-size: 1.4rem; }
+    .nav-item.active { color: var(--accent); }
 
-    .nav-item.active {
-      color: var(--accent);
-    }
-
-    /* === MODAL === */
+    /* === VIEW MODAL (Read-only task details) === */
     .modal {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.85);
       backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
       z-index: 200;
-      align-items: flex-end;
-      justify-content: center;
+      overflow-y: auto;
     }
 
-    .modal.active { display: flex; }
+    .modal.active { display: block; }
 
-    .modal-content {
+    .modal-sheet {
+      background: var(--bg-secondary);
+      min-height: 100vh;
+      padding: 20px;
+      padding-top: calc(20px + var(--safe-top));
+      padding-bottom: calc(100px + var(--safe-bottom));
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-close {
+      padding: 10px 16px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .modal-edit {
+      padding: 10px 16px;
+      background: var(--accent-dim);
+      border: none;
+      border-radius: var(--radius-md);
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .view-section {
+      margin-bottom: 24px;
+    }
+
+    .view-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .view-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .view-description {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .view-meta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      font-size: 0.8rem;
+    }
+
+    /* === COMMENTS === */
+    .comments-section {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .comments-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .comments-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .comment {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+
+    .comment-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .comment-author {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .comment-author.genie { color: var(--accent); }
+    .comment-author.michael { color: var(--info); }
+
+    .comment-time {
+      font-size: 0.7rem;
+      color: var(--text-tertiary);
+      font-family: var(--font-mono);
+    }
+
+    .comment-text {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .comment-input-container {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .comment-input {
+      flex: 1;
+      padding: 12px 14px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 16px;
+      resize: none;
+      min-height: 44px;
+      max-height: 120px;
+    }
+
+    .comment-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .comment-send {
+      padding: 12px 20px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-md);
+      color: #000;
+      font-weight: 600;
+      cursor: pointer;
+      align-self: flex-end;
+    }
+
+    .no-comments {
+      text-align: center;
+      padding: 30px;
+      color: var(--text-tertiary);
+      font-size: 0.85rem;
+    }
+
+    /* === MOVE BUTTONS === */
+    .move-actions {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      gap: 10px;
+      padding: 16px 20px;
+      padding-bottom: calc(16px + var(--safe-bottom));
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+    }
+
+    .move-btn {
+      flex: 1;
+      padding: 16px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .move-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+    }
+
+    /* === EDIT MODAL === */
+    .edit-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.9);
+      z-index: 300;
+      align-items: flex-end;
+    }
+
+    .edit-modal.active { display: flex; }
+
+    .edit-content {
       background: var(--bg-secondary);
       width: 100%;
-      max-width: 500px;
       max-height: 90vh;
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
       padding: 24px;
@@ -485,7 +595,7 @@
       overflow-y: auto;
     }
 
-    .modal-handle {
+    .edit-handle {
       width: 36px;
       height: 4px;
       background: var(--border-light);
@@ -493,22 +603,20 @@
       margin: 0 auto 20px;
     }
 
-    .modal h2 {
-      font-size: 1.3rem;
-      font-weight: 700;
-      margin-bottom: 24px;
-      letter-spacing: -0.02em;
+    .edit-content h2 {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
     }
 
     .form-group {
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     .form-group label {
       display: block;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-weight: 600;
-      color: var(--text-secondary);
+      color: var(--text-tertiary);
       margin-bottom: 8px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -524,30 +632,23 @@
       border-radius: var(--radius-md);
       color: var(--text-primary);
       font-size: 16px;
-      font-family: var(--font-sans);
-      transition: all 0.2s;
     }
 
     .form-group input:focus,
-    .form-group textarea:focus,
-    .form-group select:focus {
+    .form-group textarea:focus {
       outline: none;
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-dim);
     }
 
-    .form-group textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
+    .form-group textarea { min-height: 100px; resize: vertical; }
 
-    .modal-actions {
+    .edit-actions {
       display: flex;
       gap: 12px;
-      margin-top: 24px;
+      margin-top: 20px;
     }
 
-    .modal-actions button {
+    .edit-actions button {
       flex: 1;
       padding: 16px;
       border: none;
@@ -555,30 +656,17 @@
       font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
     }
 
-    .btn-cancel {
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-    }
+    .btn-cancel { background: var(--bg-tertiary); color: var(--text-primary); }
+    .btn-delete { background: rgba(255,69,58,0.15); color: var(--danger); }
+    .btn-save { background: var(--accent); color: #000; }
 
-    .btn-save {
-      background: var(--accent);
-      color: #000;
-    }
-
-    .btn-delete {
-      background: rgba(255,69,58,0.15);
-      color: var(--danger);
-    }
-
-    /* === STATS VIEW === */
+    /* === STATS === */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 12px;
-      padding: 20px;
     }
 
     .stat-card {
@@ -589,8 +677,7 @@
     }
 
     .stat-card h4 {
-      font-size: 0.75rem;
-      font-weight: 600;
+      font-size: 0.7rem;
       color: var(--text-tertiary);
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -601,25 +688,15 @@
       font-size: 2.5rem;
       font-weight: 700;
       font-family: var(--font-mono);
-      letter-spacing: -0.02em;
     }
 
     .stat-card .value.accent { color: var(--accent); }
     .stat-card .value.success { color: var(--success); }
-    .stat-card .value.purple { color: var(--purple); }
 
-    /* === DESKTOP === */
     @media (min-width: 1024px) {
       .bottom-nav { display: none; }
-      .task-container { 
-        padding-bottom: 40px; 
-        max-width: 1400px;
-      }
-      
-      .mission-tabs {
-        justify-content: center;
-        gap: 8px;
-      }
+      .task-container { padding-bottom: 40px; max-width: 900px; }
+      .move-actions { max-width: 900px; left: 50%; transform: translateX(-50%); }
     }
   </style>
 </head>
@@ -631,10 +708,8 @@
         <span class="logo-text">The <span>Lamp</span></span>
       </div>
       <div class="status-bar">
-        <div class="status-indicator">
-          <span class="status-dot" id="status-dot"></span>
-          <span id="status-text">CONNECTED</span>
-        </div>
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">CONNECTED</span>
       </div>
     </div>
   </header>
@@ -647,44 +722,78 @@
   </div>
 
   <nav class="mission-tabs" id="tabs"></nav>
-
   <main class="task-container" id="task-container"></main>
 
   <nav class="bottom-nav">
     <button class="nav-item active" data-view="tasks" onclick="switchView('tasks')">
-      <span class="icon">📋</span>
-      Missions
+      <span class="icon">📋</span>Missions
     </button>
-    <button class="nav-item" data-view="add" onclick="openModal()">
-      <span class="icon">✨</span>
-      New
+    <button class="nav-item" data-view="add" onclick="openNewTask()">
+      <span class="icon">✨</span>New
     </button>
     <button class="nav-item" data-view="stats" onclick="switchView('stats')">
-      <span class="icon">📊</span>
-      Stats
+      <span class="icon">📊</span>Stats
     </button>
   </nav>
 
-  <div class="modal" id="modal">
-    <div class="modal-content">
-      <div class="modal-handle"></div>
-      <h2 id="modal-title">New Mission</h2>
+  <!-- VIEW MODAL (Read-only task details + comments) -->
+  <div class="modal" id="view-modal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <button class="modal-close" onclick="closeViewModal()">← Back</button>
+        <button class="modal-edit" onclick="editCurrentTask()">Edit</button>
+      </div>
+
+      <div class="view-section">
+        <div class="view-label">Mission</div>
+        <div class="view-title" id="view-title"></div>
+      </div>
+
+      <div class="view-section">
+        <div class="view-label">Details</div>
+        <div class="view-description" id="view-desc"></div>
+      </div>
+
+      <div class="view-section">
+        <div class="view-meta" id="view-meta"></div>
+      </div>
+
+      <div class="comments-section">
+        <div class="comments-header">
+          <span class="comments-title">💬 Activity Log</span>
+        </div>
+        <div id="comments-list"></div>
+        <div class="comment-input-container">
+          <textarea class="comment-input" id="comment-input" placeholder="Add update or feedback..." rows="1"></textarea>
+          <button class="comment-send" onclick="addComment()">Send</button>
+        </div>
+      </div>
+
+      <div class="move-actions" id="move-actions"></div>
+    </div>
+  </div>
+
+  <!-- EDIT MODAL -->
+  <div class="edit-modal" id="edit-modal">
+    <div class="edit-content">
+      <div class="edit-handle"></div>
+      <h2 id="edit-title">Edit Mission</h2>
       
       <div class="form-group">
-        <label>Mission Name</label>
-        <input type="text" id="task-title" placeholder="What needs to be done?">
+        <label>Title</label>
+        <input type="text" id="task-title">
       </div>
       
       <div class="form-group">
-        <label>Details</label>
-        <textarea id="task-desc" placeholder="Mission briefing..."></textarea>
+        <label>Description</label>
+        <textarea id="task-desc"></textarea>
       </div>
       
       <div class="form-group">
         <label>Priority</label>
         <select id="task-priority">
           <option value="high">🔴 Critical</option>
-          <option value="medium" selected>🟡 Standard</option>
+          <option value="medium">🟡 Standard</option>
           <option value="low">🟢 Low</option>
         </select>
       </div>
@@ -692,14 +801,14 @@
       <div class="form-group">
         <label>Type</label>
         <select id="task-type">
-          <option value="single" selected>📌 One-time</option>
+          <option value="single">📌 One-time</option>
           <option value="recurring">🔄 Recurring</option>
         </select>
       </div>
       
-      <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-        <button class="btn-delete" id="delete-btn" style="display:none" onclick="deleteTask()">Delete</button>
+      <div class="edit-actions">
+        <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+        <button class="btn-delete" id="delete-btn" onclick="deleteTask()">Delete</button>
         <button class="btn-save" onclick="saveTask()">Save</button>
       </div>
     </div>
@@ -713,15 +822,14 @@
       review: { label: 'Review', icon: '👀' },
       done: { label: 'Complete', icon: '✅' }
     };
-
     const COLUMN_ORDER = ['inbox', 'todo', 'in_progress', 'review', 'done'];
 
     let tasks = [];
     let currentColumn = 'inbox';
+    let viewingTaskId = null;
     let editingTaskId = null;
     let currentView = 'tasks';
 
-    // Quick Add
     document.getElementById('quick-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') quickAdd();
     });
@@ -738,7 +846,8 @@
         column: 'inbox',
         created: new Date().toISOString().split('T')[0],
         priority: 'medium',
-        type: 'single'
+        type: 'single',
+        comments: []
       });
 
       input.value = '';
@@ -751,11 +860,10 @@
       try {
         const res = await fetch('/api/tasks');
         const data = await res.json();
-        tasks = data.tasks || [];
+        tasks = (data.tasks || []).map(t => ({ ...t, comments: t.comments || [] }));
         renderAll();
         updateStatus('connected', 'CONNECTED');
       } catch (e) {
-        console.error('Load failed:', e);
         const saved = localStorage.getItem('lamp-tasks');
         if (saved) tasks = JSON.parse(saved);
         renderAll();
@@ -766,7 +874,6 @@
     async function saveTasks() {
       updateStatus('syncing', 'SAVING');
       localStorage.setItem('lamp-tasks', JSON.stringify(tasks));
-
       try {
         const res = await fetch('/api/tasks', {
           method: 'POST',
@@ -775,7 +882,7 @@
         });
         if ((await res.json()).ok) {
           updateStatus('connected', 'SAVED');
-          setTimeout(() => updateStatus('connected', 'CONNECTED'), 1500);
+          setTimeout(() => updateStatus('connected', 'CONNECTED'), 1000);
         }
       } catch (e) {
         updateStatus('offline', 'OFFLINE');
@@ -783,20 +890,15 @@
     }
 
     function updateStatus(state, text) {
-      const dot = document.getElementById('status-dot');
-      const statusText = document.getElementById('status-text');
-      dot.className = 'status-dot' + (state === 'syncing' ? ' syncing' : '');
-      statusText.textContent = text;
+      document.getElementById('status-dot').className = 'status-dot' + (state === 'syncing' ? ' syncing' : '');
+      document.getElementById('status-text').textContent = text;
     }
 
     function renderTabs() {
-      const tabs = document.getElementById('tabs');
-      tabs.innerHTML = COLUMN_ORDER.map(col => {
+      document.getElementById('tabs').innerHTML = COLUMN_ORDER.map(col => {
         const count = tasks.filter(t => t.column === col).length;
-        const active = col === currentColumn ? 'active' : '';
-        return `<button class="mission-tab ${active}" data-col="${col}" onclick="selectColumn('${col}')">
-          <span class="icon">${COLUMNS[col].icon}</span>
-          ${COLUMNS[col].label}
+        return `<button class="mission-tab ${col === currentColumn ? 'active' : ''}" onclick="selectColumn('${col}')">
+          <span class="icon">${COLUMNS[col].icon}</span>${COLUMNS[col].label}
           <span class="count">${count}</span>
         </button>`;
       }).join('');
@@ -807,50 +909,27 @@
       const colTasks = tasks.filter(t => t.column === currentColumn);
 
       if (colTasks.length === 0) {
-        const emptyMessages = {
-          inbox: { icon: '📥', title: 'Inbox Clear', msg: 'No new missions waiting' },
-          todo: { icon: '📋', title: 'Queue Empty', msg: 'Nothing queued up' },
-          in_progress: { icon: '⚡', title: 'Standing By', msg: 'No active missions' },
-          review: { icon: '👀', title: 'All Reviewed', msg: 'Nothing pending review' },
-          done: { icon: '🎉', title: 'Mission Complete', msg: 'All tasks accomplished' }
-        };
-        const empty = emptyMessages[currentColumn];
         container.innerHTML = `<div class="empty-state">
-          <div class="icon">${empty.icon}</div>
-          <h3>${empty.title}</h3>
-          <p>${empty.msg}</p>
+          <div class="icon">${COLUMNS[currentColumn].icon}</div>
+          <h3>${currentColumn === 'done' ? 'All Clear!' : 'No missions'}</h3>
         </div>`;
         return;
       }
 
       container.innerHTML = colTasks.map(task => {
-        const colIdx = COLUMN_ORDER.indexOf(task.column);
-        const canLeft = colIdx > 0;
-        const canRight = colIdx < COLUMN_ORDER.length - 1;
-        const nextLabel = canRight ? COLUMNS[COLUMN_ORDER[colIdx + 1]].label : '';
-        const prevLabel = canLeft ? COLUMNS[COLUMN_ORDER[colIdx - 1]].label : '';
+        const commentCount = (task.comments || []).length;
+        const badges = task.type === 'recurring' ? '<span class="badge recurring">🔄</span>' : '';
+        const preview = task.description ? task.description.split('\n')[0].substring(0, 60) + '...' : '';
         
-        const badges = task.type === 'recurring' ? '<span class="badge recurring">🔄 RECURRING</span>' : '';
-
-        return `<div class="task-card priority-${task.priority}" onclick="editTask('${task.id}')">
-          <div class="task-header">
-            <div class="task-title">${task.title}</div>
-            <div class="task-badges">${badges}</div>
-          </div>
-          ${task.description ? `<div class="task-desc">${task.description}</div>` : ''}
-          <div class="task-meta">
-            <div class="task-meta-item">
-              <span>📅</span>
-              <span>${task.created}</span>
+        return `<div class="task-card priority-${task.priority}" onclick="viewTask('${task.id}')">
+          <div class="task-title">${task.title}</div>
+          ${preview ? `<div class="task-preview">${preview}</div>` : ''}
+          <div class="task-footer">
+            <span>${task.created}</span>
+            <div class="task-badges">
+              ${commentCount > 0 ? `<span class="comments-count">💬 ${commentCount}</span>` : ''}
+              ${badges}
             </div>
-            <div class="task-meta-item">
-              <span>${task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢'}</span>
-              <span>${task.priority.toUpperCase()}</span>
-            </div>
-          </div>
-          <div class="task-actions">
-            ${canLeft ? `<button class="task-action" onclick="event.stopPropagation(); moveTask('${task.id}', -1)">← ${prevLabel}</button>` : ''}
-            ${canRight ? `<button class="task-action primary" onclick="event.stopPropagation(); moveTask('${task.id}', 1)">${nextLabel} →</button>` : ''}
           </div>
         </div>`;
       }).join('');
@@ -869,43 +948,125 @@
       renderAll();
     }
 
+    function viewTask(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      
+      viewingTaskId = id;
+      document.getElementById('view-title').textContent = task.title;
+      document.getElementById('view-desc').textContent = task.description || 'No description';
+      
+      // Meta
+      const priorityIcon = task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢';
+      document.getElementById('view-meta').innerHTML = `
+        <div class="meta-item">📅 ${task.created}</div>
+        <div class="meta-item">${priorityIcon} ${task.priority}</div>
+        <div class="meta-item">${task.type === 'recurring' ? '🔄 Recurring' : '📌 One-time'}</div>
+        <div class="meta-item">${COLUMNS[task.column].icon} ${COLUMNS[task.column].label}</div>
+      `;
+
+      // Comments
+      const comments = task.comments || [];
+      if (comments.length === 0) {
+        document.getElementById('comments-list').innerHTML = '<div class="no-comments">No activity yet</div>';
+      } else {
+        document.getElementById('comments-list').innerHTML = comments.map(c => `
+          <div class="comment">
+            <div class="comment-header">
+              <span class="comment-author ${c.author}">${c.author === 'genie' ? '🧞 Genie' : '👤 Michael'}</span>
+              <span class="comment-time">${c.time}</span>
+            </div>
+            <div class="comment-text">${c.text}</div>
+          </div>
+        `).join('');
+      }
+
+      // Move buttons
+      const colIdx = COLUMN_ORDER.indexOf(task.column);
+      const canLeft = colIdx > 0;
+      const canRight = colIdx < COLUMN_ORDER.length - 1;
+      
+      document.getElementById('move-actions').innerHTML = `
+        ${canLeft ? `<button class="move-btn" onclick="moveTask('${id}', -1)">← ${COLUMNS[COLUMN_ORDER[colIdx - 1]].label}</button>` : ''}
+        ${canRight ? `<button class="move-btn primary" onclick="moveTask('${id}', 1)">${COLUMNS[COLUMN_ORDER[colIdx + 1]].label} →</button>` : ''}
+      `;
+
+      document.getElementById('view-modal').classList.add('active');
+    }
+
+    function closeViewModal() {
+      document.getElementById('view-modal').classList.remove('active');
+      viewingTaskId = null;
+    }
+
+    function addComment() {
+      const input = document.getElementById('comment-input');
+      const text = input.value.trim();
+      if (!text || !viewingTaskId) return;
+
+      const task = tasks.find(t => t.id === viewingTaskId);
+      if (!task) return;
+
+      if (!task.comments) task.comments = [];
+      task.comments.push({
+        author: 'michael',
+        text,
+        time: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      });
+
+      input.value = '';
+      viewTask(viewingTaskId); // Refresh view
+      saveTasks();
+    }
+
     function moveTask(id, direction) {
       const task = tasks.find(t => t.id === id);
       if (!task) return;
+      
       const idx = COLUMN_ORDER.indexOf(task.column);
       const newIdx = idx + direction;
       if (newIdx < 0 || newIdx >= COLUMN_ORDER.length) return;
+      
       task.column = COLUMN_ORDER[newIdx];
+      
+      if (viewingTaskId === id) viewTask(id);
       renderAll();
       saveTasks();
     }
 
-    function openModal() {
+    function editCurrentTask() {
+      if (!viewingTaskId) return;
+      closeViewModal();
+      openEditModal(viewingTaskId);
+    }
+
+    function openNewTask() {
       editingTaskId = null;
-      document.getElementById('modal-title').textContent = 'New Mission';
+      document.getElementById('edit-title').textContent = 'New Mission';
       document.getElementById('task-title').value = '';
       document.getElementById('task-desc').value = '';
       document.getElementById('task-priority').value = 'medium';
       document.getElementById('task-type').value = 'single';
       document.getElementById('delete-btn').style.display = 'none';
-      document.getElementById('modal').classList.add('active');
+      document.getElementById('edit-modal').classList.add('active');
     }
 
-    function editTask(id) {
+    function openEditModal(id) {
       const task = tasks.find(t => t.id === id);
       if (!task) return;
+
       editingTaskId = id;
-      document.getElementById('modal-title').textContent = 'Edit Mission';
+      document.getElementById('edit-title').textContent = 'Edit Mission';
       document.getElementById('task-title').value = task.title;
       document.getElementById('task-desc').value = task.description || '';
       document.getElementById('task-priority').value = task.priority;
       document.getElementById('task-type').value = task.type || 'single';
       document.getElementById('delete-btn').style.display = 'block';
-      document.getElementById('modal').classList.add('active');
+      document.getElementById('edit-modal').classList.add('active');
     }
 
-    function closeModal() {
-      document.getElementById('modal').classList.remove('active');
+    function closeEditModal() {
+      document.getElementById('edit-modal').classList.remove('active');
       editingTaskId = null;
     }
 
@@ -913,7 +1074,7 @@
       const title = document.getElementById('task-title').value.trim();
       if (!title) return;
 
-      const taskData = {
+      const data = {
         title,
         description: document.getElementById('task-desc').value.trim(),
         priority: document.getElementById('task-priority').value,
@@ -922,17 +1083,18 @@
 
       if (editingTaskId) {
         const task = tasks.find(t => t.id === editingTaskId);
-        if (task) Object.assign(task, taskData);
+        if (task) Object.assign(task, data);
       } else {
         tasks.push({
           id: Date.now().toString(),
-          ...taskData,
+          ...data,
           column: 'inbox',
-          created: new Date().toISOString().split('T')[0]
+          created: new Date().toISOString().split('T')[0],
+          comments: []
         });
       }
 
-      closeModal();
+      closeEditModal();
       renderAll();
       saveTasks();
     }
@@ -940,7 +1102,7 @@
     function deleteTask() {
       if (!editingTaskId || !confirm('Delete this mission?')) return;
       tasks = tasks.filter(t => t.id !== editingTaskId);
-      closeModal();
+      closeEditModal();
       renderAll();
       saveTasks();
     }
@@ -948,43 +1110,33 @@
     function switchView(view) {
       currentView = view;
       document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
-      
       if (view === 'stats') renderStats();
       else renderTasks();
     }
 
     function renderStats() {
-      const container = document.getElementById('task-container');
-      const counts = {
-        inbox: tasks.filter(t => t.column === 'inbox').length,
-        todo: tasks.filter(t => t.column === 'todo').length,
-        in_progress: tasks.filter(t => t.column === 'in_progress').length,
-        review: tasks.filter(t => t.column === 'review').length,
-        done: tasks.filter(t => t.column === 'done').length
-      };
+      const counts = COLUMN_ORDER.reduce((acc, col) => {
+        acc[col] = tasks.filter(t => t.column === col).length;
+        return acc;
+      }, {});
 
-      container.innerHTML = `<div class="stats-grid">
-        <div class="stat-card">
-          <h4>Active</h4>
-          <div class="value accent">${counts.in_progress}</div>
-        </div>
-        <div class="stat-card">
-          <h4>Review</h4>
-          <div class="value purple">${counts.review}</div>
-        </div>
-        <div class="stat-card">
-          <h4>Completed</h4>
-          <div class="value success">${counts.done}</div>
-        </div>
-        <div class="stat-card">
-          <h4>Total</h4>
-          <div class="value">${tasks.length}</div>
-        </div>
+      document.getElementById('task-container').innerHTML = `<div class="stats-grid">
+        <div class="stat-card"><h4>Active</h4><div class="value accent">${counts.in_progress}</div></div>
+        <div class="stat-card"><h4>Review</h4><div class="value">${counts.review}</div></div>
+        <div class="stat-card"><h4>Completed</h4><div class="value success">${counts.done}</div></div>
+        <div class="stat-card"><h4>Total</h4><div class="value">${tasks.length}</div></div>
       </div>`;
     }
 
-    document.getElementById('modal').addEventListener('click', e => {
-      if (e.target.id === 'modal') closeModal();
+    document.getElementById('edit-modal').addEventListener('click', e => {
+      if (e.target.id === 'edit-modal') closeEditModal();
+    });
+
+    document.getElementById('comment-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        addComment();
+      }
     });
 
     loadTasks();
