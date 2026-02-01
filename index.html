@@ -405,7 +405,7 @@
       min-height: 100vh;
       padding: 20px;
       padding-top: calc(20px + var(--safe-top));
-      padding-bottom: 20px;
+      padding-bottom: calc(100px + var(--safe-bottom));
     }
 
     .modal-header {
@@ -536,7 +536,6 @@
     .comments-section {
       margin-top: 32px;
       padding-top: 24px;
-      padding-bottom: 100px;
       border-top: 1px solid var(--border);
     }
 
@@ -620,12 +619,19 @@
 
     /* === MOVE BUTTONS === */
     .move-actions {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
       display: flex;
       gap: 10px;
-      padding: 16px 0;
+      padding: 16px 20px;
       padding-bottom: calc(16px + var(--safe-bottom));
-      margin-top: 20px;
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
+      z-index: 210;
     }
 
     .move-btn {
@@ -1009,6 +1015,16 @@
       const seenAt = task.seenAt || 0;
       return task.comments.filter(c => c.author === "genie" && new Date(c.time).getTime() > seenAt).length;
     }
+    
+    // Make URLs clickable in text (XSS-safe)
+    function linkify(text) {
+      if (!text) return '';
+      // Escape HTML first
+      const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // Then convert URLs to links
+      const urlRegex = /(https?:\/\/[^\s<]+)/g;
+      return escaped.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener" style="color: var(--accent); word-break: break-all;">$1</a>');
+    }
 
 
     function smartAdd() {
@@ -1123,13 +1139,32 @@
     function renderTasks() {
       const container = document.getElementById('task-container');
       // Genie column ignores type filter - shows all ideas
-      const colTasks = tasks.filter(t => {
+      let colTasks = tasks.filter(t => {
         if (t.column !== currentColumn) return false;
         if (currentColumn === 'genie') return true;
         if (typeFilter === 'laptop') return t.needsLaptop;
+        // Hide laptop-only tasks unless laptop filter is active
+        if (t.needsLaptop && typeFilter !== 'laptop') return false;
         if (typeFilter === 'all') return true;
         return (t.type || 'single') === typeFilter;
       });
+      
+      // Sort based on column
+      if (currentColumn === 'done') {
+        // Granted: newest first (by id which is timestamp, or created date)
+        colTasks.sort((a, b) => {
+          const aTime = parseInt(a.id) || new Date(a.created).getTime() || 0;
+          const bTime = parseInt(b.id) || new Date(b.created).getTime() || 0;
+          return bTime - aTime; // descending (newest first)
+        });
+      } else if (currentColumn === 'review') {
+        // Review: oldest updates first (tasks waiting longest get attention)
+        colTasks.sort((a, b) => {
+          const aLast = a.comments?.length ? new Date(a.comments[a.comments.length-1].time).getTime() : (parseInt(a.id) || new Date(a.created).getTime() || 0);
+          const bLast = b.comments?.length ? new Date(b.comments[b.comments.length-1].time).getTime() : (parseInt(b.id) || new Date(b.created).getTime() || 0);
+          return aLast - bLast; // ascending (oldest first)
+        });
+      }
 
       // Hide type filter for genie column
       document.getElementById('type-filter').style.display = currentColumn === 'genie' ? 'none' : 'flex';
@@ -1190,12 +1225,12 @@
       viewingTaskId = id;
       task.seenAt = Date.now(); saveTasks();
       document.getElementById('view-title').textContent = task.title;
-      document.getElementById('view-desc').textContent = task.description || 'No description provided';
+      document.getElementById('view-desc').innerHTML = linkify(task.description) || 'No description provided';
       
       // Success Criteria
       const criteriaSection = document.getElementById('criteria-section');
       if (task.successCriteria) {
-        document.getElementById('view-criteria').textContent = task.successCriteria;
+        document.getElementById('view-criteria').innerHTML = linkify(task.successCriteria);
         criteriaSection.style.display = 'block';
       } else {
         criteriaSection.style.display = 'none';
@@ -1204,7 +1239,7 @@
       // User Journey
       const journeySection = document.getElementById('journey-section');
       if (task.userJourney) {
-        document.getElementById('view-journey').textContent = task.userJourney;
+        document.getElementById('view-journey').innerHTML = linkify(task.userJourney);
         journeySection.style.display = 'block';
       } else {
         journeySection.style.display = 'none';
@@ -1242,7 +1277,7 @@
               <span class="comment-author ${c.author}">${c.author === 'genie' ? '🧞 Genie' : '👤 Michael'}</span>
               <span class="comment-time">${c.time}</span>
             </div>
-            <div class="comment-text">${c.text}</div>
+            <div class="comment-text">${linkify(c.text)}</div>
           </div>
         `).join('');
       }
@@ -1507,6 +1542,11 @@
 
     document.getElementById('comment-input').addEventListener('keydown', e => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addComment(); }
+    });
+    
+    // Scroll comment input into view when focused (for mobile keyboard)
+    document.getElementById('comment-input').addEventListener('focus', () => {
+      setTimeout(() => document.getElementById('comment-input').scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
     });
 
     loadTasks();

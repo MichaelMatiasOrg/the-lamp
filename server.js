@@ -69,21 +69,21 @@ async function getTasks() {
     }
   }
   
-  // Fallback to local file
-  try {
-    const fileData = JSON.parse(fs.readFileSync(path.join(__dirname, 'tasks.json'), 'utf8'));
-    if (fileData.tasks && fileData.tasks.length > 0) {
-      tasksCache = fileData;
-      console.log(`✓ Loaded ${fileData.tasks.length} tasks from file`);
-      // Sync to Redis
-      if (redis) {
-        await redis.set(TASKS_KEY, fileData);
-        console.log('✓ Synced to Redis');
+  // Fallback to local file ONLY if Redis is not configured
+  // If Redis IS configured but failed, don't use stale file - it could overwrite real data
+  if (!redis) {
+    try {
+      const fileData = JSON.parse(fs.readFileSync(path.join(__dirname, 'tasks.json'), 'utf8'));
+      if (fileData.tasks && fileData.tasks.length > 0) {
+        tasksCache = fileData;
+        console.log(`✓ Loaded ${fileData.tasks.length} tasks from file (no Redis configured)`);
+        return fileData;
       }
-      return fileData;
+    } catch (e) {
+      console.log('No local file');
     }
-  } catch (e) {
-    console.log('No local file');
+  } else {
+    console.log('⚠️ Redis configured but returned no data - NOT falling back to potentially stale file');
   }
   
   return DEFAULT_DATA;
