@@ -846,6 +846,7 @@
     <button class="filter-btn" data-filter="all" onclick="setTypeFilter('all')">All</button>
     <button class="filter-btn active" data-filter="single" onclick="setTypeFilter('single')">📌 One-time</button>
     <button class="filter-btn" data-filter="recurring" onclick="setTypeFilter('recurring')">🔄 Recurring</button>
+    <button class="filter-btn" data-filter="laptop" onclick="setTypeFilter('laptop')">💻 Laptop</button>
   </div>
 
   <main class="task-container" id="task-container"></main>
@@ -1123,7 +1124,13 @@
     function renderTasks() {
       const container = document.getElementById('task-container');
       // Genie column ignores type filter - shows all ideas
-      const colTasks = tasks.filter(t => t.column === currentColumn && (currentColumn === 'genie' || typeFilter === "all" || (t.type || "single") === typeFilter));
+      const colTasks = tasks.filter(t => {
+        if (t.column !== currentColumn) return false;
+        if (currentColumn === 'genie') return true;
+        if (typeFilter === 'laptop') return t.needsLaptop;
+        if (typeFilter === 'all') return true;
+        return (t.type || 'single') === typeFilter;
+      });
 
       // Hide type filter for genie column
       document.getElementById('type-filter').style.display = currentColumn === 'genie' ? 'none' : 'flex';
@@ -1156,6 +1163,7 @@
           <div class="task-desc-preview ${isShort ? 'short' : ''}">${desc}</div>
           <div class="task-footer">
             <span>${task.created}</span>
+            ${task.needsLaptop ? '<span style="opacity:0.7">💻</span>' : ''}
             ${task.image ? '<span style="opacity:0.7">📷</span>' : ''}
             ${(() => { const unread = getUnreadGenieComments(task); return unread > 0 ? `<span class="unread-badge">🧞 ${unread}</span>` : ""; })()}${commentCount > 0 ? `<span class="comments-count">💬 ${commentCount}</span>` : ""}
           </div>
@@ -1251,6 +1259,16 @@
           <button class="move-btn" onclick="discardIdea('${id}')">❌ Discard</button>
           <button class="move-btn primary" onclick="approveIdea('${id}')">✅ Approve</button>
         `;
+      } else if (task.column === 'review') {
+        // Review tasks: option to mark for laptop review
+        const laptopBtn = task.needsLaptop 
+          ? `<button class="move-btn" onclick="toggleLaptop('${id}')" style="background:var(--info)">💻 On Laptop</button>`
+          : `<button class="move-btn" onclick="toggleLaptop('${id}')">💻 Laptop</button>`;
+        document.getElementById('move-actions').innerHTML = `
+          ${canLeft ? `<button class="move-btn" onclick="moveTask('${id}', -1)">← ${COLUMNS[COLUMN_ORDER[colIdx - 1]].label}</button>` : ''}
+          ${laptopBtn}
+          ${canRight ? `<button class="move-btn primary" onclick="moveTask('${id}', 1)">${COLUMNS[COLUMN_ORDER[colIdx + 1]].label} →</button>` : ''}
+        `;
       } else {
         document.getElementById('move-actions').innerHTML = `
           ${canLeft ? `<button class="move-btn" onclick="moveTask('${id}', -1)">← ${COLUMNS[COLUMN_ORDER[colIdx - 1]].label}</button>` : ''}
@@ -1343,6 +1361,15 @@
       if (!confirm('Discard this idea?')) return;
       tasks = tasks.filter(t => t.id !== id);
       closeViewModal();
+      renderAll();
+      saveTasks();
+    }
+
+    function toggleLaptop(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      task.needsLaptop = !task.needsLaptop;
+      viewTask(id); // Refresh the view
       renderAll();
       saveTasks();
     }
