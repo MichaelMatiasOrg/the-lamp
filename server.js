@@ -35,68 +35,47 @@ const MIME_TYPES = {
 const DEFAULT_DATA = { columns: ['genie', 'inbox', 'todo', 'in_progress', 'review', 'done'], tasks: [], history: [] };
 const HISTORY_KEY = 'lamp:history';
 
-// In-memory cache
-let tasksCache = null;
-
-// Get tasks from Redis
+// Get tasks - ALWAYS fetch from Redis (no memory cache)
 async function getTasks() {
-  // Return cache if valid
-  if (tasksCache && tasksCache.tasks && tasksCache.tasks.length > 0) {
-    return tasksCache;
-  }
-  
-  // Try Redis
+  // Always try Redis first
   if (redis) {
     try {
-      console.log('Loading tasks from Redis...');
       let data = await redis.get(TASKS_KEY);
-      console.log('Redis response type:', typeof data);
-      console.log('Redis response preview:', JSON.stringify(data)?.substring(0, 100));
       
       // Handle string data (from REST API storage)
       if (typeof data === 'string') {
-        console.log('Parsing string data...');
         data = JSON.parse(data);
       }
       if (data && data.tasks && data.tasks.length > 0) {
-        tasksCache = data;
-        console.log(`✓ Loaded ${data.tasks.length} tasks from Redis`);
+        console.log(`✓ Fetched ${data.tasks.length} tasks from Redis`);
         return data;
       } else {
-        console.log('Redis data empty or invalid:', { hasTasks: !!data?.tasks, length: data?.tasks?.length });
+        console.log('Redis data empty or invalid');
       }
     } catch (e) {
-      console.error('Redis GET error:', e.message, e.stack);
+      console.error('Redis GET error:', e.message);
     }
   }
   
-  // Fallback to local file ONLY if Redis is not configured
-  // If Redis IS configured but failed, don't use stale file - it could overwrite real data
-  if (!redis) {
-    try {
-      const fileData = JSON.parse(fs.readFileSync(path.join(__dirname, 'tasks.json'), 'utf8'));
-      if (fileData.tasks && fileData.tasks.length > 0) {
-        tasksCache = fileData;
-        console.log(`✓ Loaded ${fileData.tasks.length} tasks from file (no Redis configured)`);
-        return fileData;
-      }
-    } catch (e) {
-      console.log('No local file');
+  // Fallback to local file ONLY if Redis failed or not configured
+  try {
+    const fileData = JSON.parse(fs.readFileSync(path.join(__dirname, 'tasks.json'), 'utf8'));
+    if (fileData.tasks && fileData.tasks.length > 0) {
+      console.log(`⚠️ Fallback: Loaded ${fileData.tasks.length} tasks from local file`);
+      return fileData;
     }
-  } else {
-    console.log('⚠️ Redis configured but returned no data - NOT falling back to potentially stale file');
+  } catch (e) {
+    console.log('No local backup file');
   }
   
   return DEFAULT_DATA;
 }
 
-// Save tasks
+// Save tasks - Redis primary, local backup
 async function saveTasks(data) {
   if (!data || !data.tasks) return;
   
-  tasksCache = data;
-  
-  // Save to Redis
+  // Save to Redis (primary)
   if (redis) {
     try {
       await redis.set(TASKS_KEY, data);
@@ -106,24 +85,19 @@ async function saveTasks(data) {
     }
   }
   
-  // Also save locally
+  // Also save locally as backup
   try {
     fs.writeFileSync(path.join(__dirname, 'tasks.json'), JSON.stringify(data, null, 2));
   } catch (e) {}
 }
 
-// History cache
-let historyCache = [];
-
-// Get history from Redis
+// Get history - ALWAYS fetch from Redis
 async function getHistory() {
-  if (historyCache.length > 0) return historyCache;
   if (redis) {
     try {
       let data = await redis.get(HISTORY_KEY);
       if (typeof data === 'string') data = JSON.parse(data);
       if (Array.isArray(data)) {
-        historyCache = data;
         return data;
       }
     } catch (e) {
@@ -135,11 +109,13 @@ async function getHistory() {
 
 // Save history entry
 async function addHistoryEntry(entry) {
-  historyCache.unshift(entry); // Add to front
-  historyCache = historyCache.slice(0, 500); // Keep last 500
   if (redis) {
     try {
-      await redis.set(HISTORY_KEY, historyCache);
+      // Fetch current, add new entry, save back
+      let history = await getHistory();
+      history.unshift(entry); // Add to front
+      history = history.slice(0, 500); // Keep last 500
+      await redis.set(HISTORY_KEY, history);
     } catch (e) {
       console.error('History SET error:', e.message);
     }
@@ -434,7 +410,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ 
       status: 'ok', 
-      tasks: tasksCache?.tasks?.length || 0,
+      tasks: 'check /api/tasks',
       redis: !!redis
     }));
     return;
