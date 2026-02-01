@@ -1471,8 +1471,13 @@
         <div class="comments-title">💬 Activity Log</div>
         <div id="comments-list"></div>
         <div class="comment-input-container">
-          <textarea class="comment-input" id="comment-input" placeholder="Add feedback..." rows="1"></textarea>
-          <button class="comment-send" onclick="addComment()">Send</button>
+          <div style="display:flex;gap:8px;align-items:flex-end;width:100%;">
+            <textarea class="comment-input" id="comment-input" placeholder="Add feedback..." rows="1" style="flex:1;"></textarea>
+            <input type="file" id="comment-image-input" accept="image/*" style="display:none;" onchange="previewCommentImage(this)">
+            <button onclick="document.getElementById('comment-image-input').click()" style="padding:10px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;cursor:pointer;" title="Attach image">📷</button>
+            <button class="comment-send" onclick="addComment()">Send</button>
+          </div>
+          <div id="comment-image-preview" style="display:none;margin-top:8px;"></div>
         </div>
       </div>
 
@@ -2014,7 +2019,8 @@
               <span class="comment-author ${c.author}">${c.author === 'genie' ? '🧞 Genie' : '👤 Michael'}</span>
               <span class="comment-time">${c.time}</span>
             </div>
-            <div class="comment-text">${linkify(c.text)}</div>
+            ${c.text ? `<div class="comment-text">${linkify(c.text)}</div>` : ''}
+            ${c.image ? `<div class="comment-image"><img src="${c.image}" style="max-width:100%;border-radius:8px;margin-top:8px;cursor:pointer;" onclick="window.open('${c.image}', '_blank')"></div>` : ''}
           </div>
         `).join('');
       }
@@ -2092,22 +2098,58 @@
       viewingTaskId = null;
     }
 
+    let commentImageData = null;
+    
+    function previewCommentImage(input) {
+      const file = input.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        commentImageData = e.target.result;
+        const preview = document.getElementById('comment-image-preview');
+        preview.innerHTML = `
+          <div style="position:relative;display:inline-block;">
+            <img src="${commentImageData}" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid var(--border);">
+            <button onclick="clearCommentImage()" style="position:absolute;top:-8px;right:-8px;background:var(--danger);color:white;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:14px;">×</button>
+          </div>
+        `;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+    
+    function clearCommentImage() {
+      commentImageData = null;
+      document.getElementById('comment-image-input').value = '';
+      document.getElementById('comment-image-preview').style.display = 'none';
+      document.getElementById('comment-image-preview').innerHTML = '';
+    }
+
     function addComment() {
       const input = document.getElementById('comment-input');
       const text = input.value.trim();
-      if (!text || !viewingTaskId) return;
+      if (!text && !commentImageData) return;
+      if (!viewingTaskId) return;
 
       const task = tasks.find(t => t.id === viewingTaskId);
       if (!task) return;
 
       if (!task.comments) task.comments = [];
-      task.comments.push({
+      const comment = {
         author: 'michael',
-        text,
+        text: text || '',
         time: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-      });
+      };
+      
+      if (commentImageData) {
+        comment.image = commentImageData;
+      }
+      
+      task.comments.push(comment);
 
       input.value = '';
+      clearCommentImage();
       viewTask(viewingTaskId);
       saveTasks();
     }
