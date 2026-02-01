@@ -1432,8 +1432,9 @@
     function openLampFeedback() {
       editingTaskId = null;
       document.getElementById('edit-title').textContent = '🐛 Lamp Feedback';
-      document.getElementById('task-title').value = '[LAMP] ';
-      document.getElementById('task-desc').value = 'Feature or bug for The Lamp dashboard:\n\n';
+      document.getElementById('task-title').value = '';
+      document.getElementById('task-title').placeholder = 'Describe the issue or feature...';
+      document.getElementById('task-desc').value = '[LAMP] Feature or bug for The Lamp dashboard:\n\n';
       document.getElementById('task-criteria').value = '';
       document.getElementById('task-journey').value = '';
       document.getElementById('task-priority').value = 'medium';
@@ -1535,8 +1536,12 @@
     }
 
     function switchView(view) {
+      console.log('Switching to view:', view);
       currentView = view;
       document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
+      // Force scroll to top when switching views
+      window.scrollTo(0, 0);
+      document.getElementById('content').scrollTop = 0;
       if (view === 'stats') renderStats();
       else if (view === 'history') renderHistory();
       else renderTasks();
@@ -1545,7 +1550,7 @@
     let historyFilter = 'all';
     async function renderHistory() {
       const container = document.getElementById('content');
-      container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary)">Loading history...</div>';
+      container.innerHTML = '<h2 style="margin:0 0 16px;color:var(--accent);">📜 Activity History</h2><div style="padding:20px;text-align:center;color:var(--text-secondary)">Loading...</div>';
       
       try {
         const res = await fetch('/api/history?author=' + historyFilter);
