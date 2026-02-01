@@ -38,7 +38,11 @@ async function getTasks() {
   if (redis) {
     try {
       console.log('Loading tasks from Redis...');
-      const data = await redis.get(TASKS_KEY);
+      let data = await redis.get(TASKS_KEY);
+      // Handle string data (from REST API storage)
+      if (typeof data === 'string') {
+        data = JSON.parse(data);
+      }
       if (data && data.tasks && data.tasks.length > 0) {
         tasksCache = data;
         console.log(`✓ Loaded ${data.tasks.length} tasks from Redis`);
