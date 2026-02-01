@@ -201,6 +201,32 @@
 
     .mission-tab.active .count { background: var(--accent-dim); color: var(--accent); }
 
+    /* === TYPE FILTER === */
+    .type-filter {
+      display: flex;
+      gap: 8px;
+      padding: 8px 20px 12px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .filter-btn {
+      padding: 6px 14px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text-tertiary);
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    .filter-btn.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+
     /* === TASK CONTAINER === */
     .task-container {
       padding: 20px;
@@ -756,6 +782,13 @@
   </div>
 
   <nav class="mission-tabs" id="tabs"></nav>
+
+  <div class="type-filter" id="type-filter">
+    <button class="filter-btn active" data-filter="all" onclick="setTypeFilter('all')">All</button>
+    <button class="filter-btn" data-filter="single" onclick="setTypeFilter('single')">📌 One-time</button>
+    <button class="filter-btn" data-filter="recurring" onclick="setTypeFilter('recurring')">🔄 Recurring</button>
+  </div>
+
   <main class="task-container" id="task-container"></main>
 
   <nav class="bottom-nav">
@@ -887,6 +920,16 @@
     let viewingTaskId = null;
     let editingTaskId = null;
     let currentView = 'tasks';
+    let typeFilter = 'all';
+
+    function setTypeFilter(filter) {
+      typeFilter = filter;
+      document.querySelectorAll(".filter-btn").forEach(b => 
+        b.classList.toggle("active", b.dataset.filter === filter)
+      );
+      renderTasks();
+    }
+
 
     document.getElementById('quick-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') quickAdd();
@@ -971,7 +1014,7 @@
 
     function renderTasks() {
       const container = document.getElementById('task-container');
-      const colTasks = tasks.filter(t => t.column === currentColumn);
+      const colTasks = tasks.filter(t => t.column === currentColumn && (typeFilter === "all" || (t.type || "single") === typeFilter));
 
       if (colTasks.length === 0) {
         container.innerHTML = `<div class="empty-state">
