@@ -848,6 +848,121 @@
         border-radius: var(--radius-lg);
         max-height: calc(100vh - 120px);
       }
+      
+      /* === ENHANCED DESKTOP EXPERIENCE === */
+      
+      /* Task list with better spacing */
+      .task-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 16px;
+        padding: 0;
+      }
+      
+      /* Task cards with enhanced hover */
+      .task-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+      .task-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        border-color: var(--border-light);
+      }
+      
+      /* Quick add more prominent on desktop */
+      .quick-add {
+        padding: 24px 40px;
+      }
+      .quick-add-inner {
+        max-width: 900px;
+        gap: 16px;
+      }
+      .quick-add input {
+        font-size: 18px;
+        padding: 18px 24px;
+      }
+      .quick-add button {
+        padding: 18px 32px;
+        font-size: 1rem;
+      }
+      
+      /* Edit modal wider and better layout */
+      .edit-modal .modal-content {
+        max-width: 800px;
+        margin: 40px auto;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-lg);
+        max-height: calc(100vh - 80px);
+        display: flex;
+        flex-direction: column;
+      }
+      .edit-modal .edit-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border);
+      }
+      .edit-modal .edit-body {
+        padding: 24px;
+        overflow-y: auto;
+        flex: 1;
+      }
+      .edit-modal .edit-body input,
+      .edit-modal .edit-body textarea {
+        font-size: 16px;
+      }
+      .edit-modal .edit-body textarea {
+        min-height: 120px;
+      }
+      
+      /* View modal with larger text */
+      .modal-sheet .view-title { font-size: 1.5rem; }
+      .modal-sheet .view-description { font-size: 1.05rem; line-height: 1.7; }
+      .comment-input { font-size: 16px; }
+      
+      /* Tabs more visible */
+      .mission-tabs {
+        padding: 16px 40px;
+        gap: 12px;
+      }
+      .mission-tab {
+        padding: 12px 24px;
+        font-size: 0.95rem;
+      }
+      
+      /* Filter row better positioned */
+      .filter-row {
+        padding: 0 40px 16px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      
+      /* Stats row improvement */
+      .stat-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        padding: 24px 40px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      
+      /* Task container centering */
+      .task-container {
+        padding: 20px 40px 60px;
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
+      }
+    }
+    
+    /* Extra wide screens */
+    @media (min-width: 1440px) {
+      .task-list {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .modal-sheet {
+        max-width: 800px;
+      }
     }
 
     /* === ANIMATIONS === */
