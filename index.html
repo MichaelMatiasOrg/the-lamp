@@ -1012,6 +1012,16 @@
       const seenAt = task.seenAt || 0;
       return task.comments.filter(c => c.author === "genie" && new Date(c.time).getTime() > seenAt).length;
     }
+    
+    // Make URLs clickable in text (XSS-safe)
+    function linkify(text) {
+      if (!text) return '';
+      // Escape HTML first
+      const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // Then convert URLs to links
+      const urlRegex = /(https?:\/\/[^\s<]+)/g;
+      return escaped.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener" style="color: var(--accent); word-break: break-all;">$1</a>');
+    }
 
 
     function smartAdd() {
@@ -1195,12 +1205,12 @@
       viewingTaskId = id;
       task.seenAt = Date.now(); saveTasks();
       document.getElementById('view-title').textContent = task.title;
-      document.getElementById('view-desc').textContent = task.description || 'No description provided';
+      document.getElementById('view-desc').innerHTML = linkify(task.description) || 'No description provided';
       
       // Success Criteria
       const criteriaSection = document.getElementById('criteria-section');
       if (task.successCriteria) {
-        document.getElementById('view-criteria').textContent = task.successCriteria;
+        document.getElementById('view-criteria').innerHTML = linkify(task.successCriteria);
         criteriaSection.style.display = 'block';
       } else {
         criteriaSection.style.display = 'none';
@@ -1209,7 +1219,7 @@
       // User Journey
       const journeySection = document.getElementById('journey-section');
       if (task.userJourney) {
-        document.getElementById('view-journey').textContent = task.userJourney;
+        document.getElementById('view-journey').innerHTML = linkify(task.userJourney);
         journeySection.style.display = 'block';
       } else {
         journeySection.style.display = 'none';
@@ -1247,7 +1257,7 @@
               <span class="comment-author ${c.author}">${c.author === 'genie' ? '🧞 Genie' : '👤 Michael'}</span>
               <span class="comment-time">${c.time}</span>
             </div>
-            <div class="comment-text">${c.text}</div>
+            <div class="comment-text">${linkify(c.text)}</div>
           </div>
         `).join('');
       }
