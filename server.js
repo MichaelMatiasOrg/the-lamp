@@ -4,10 +4,9 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3456;
-const TASKS_FILE = path.join(__dirname, 'tasks.json');
-// Use Gist API instead of raw URL (raw URL has aggressive caching)
-const GIST_API_URL = 'https://api.github.com/gists/efa1580eefda602e38d5517799c7e84e';
-const REFRESH_INTERVAL = 5 * 60 * 1000; // Refresh from gist every 5 minutes
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const TASKS_KEY = 'lamp:tasks';
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -20,109 +19,119 @@ const MIME_TYPES = {
 
 const DEFAULT_DATA = { columns: ['genie', 'inbox', 'todo', 'in_progress', 'review', 'done'], tasks: [] };
 
-// In-memory cache (source of truth while server is running)
+// In-memory cache
 let tasksCache = null;
-let lastGistFetch = 0;
-let lastLocalSave = 0; // Track when we last saved locally
 
-function loadTasksFromFile() {
-  try {
-    const data = JSON.parse(fs.readFileSync(TASKS_FILE, 'utf8'));
-    if (data.tasks && data.tasks.length > 0) return data;
-    return null;
-  } catch (e) {
-    return null;
-  }
-}
-
-function saveTasksToFile(data) {
-  try {
-    fs.writeFileSync(TASKS_FILE, JSON.stringify(data, null, 2));
-  } catch (e) {
-    console.error('Failed to save to file:', e.message);
-  }
-}
-
-// Fetch from Gist API (no caching issues unlike raw URL)
-function fetchFromGist() {
+// Upstash Redis REST API
+async function redisGet(key) {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return null;
+  
   return new Promise((resolve, reject) => {
-    const options = {
-      hostname: 'api.github.com',
-      path: '/gists/efa1580eefda602e38d5517799c7e84e',
-      headers: {
-        'User-Agent': 'Genie-Dashboard',
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    };
+    const url = new URL(`${UPSTASH_URL}/get/${key}`);
     
-    https.get(options, (res) => {
+    https.get(url, {
+      headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` }
+    }, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try {
-          const gist = JSON.parse(data);
-          const content = gist.files?.['tasks.json']?.content;
-          if (!content) {
-            reject(new Error('No tasks.json in gist'));
-            return;
-          }
-          const parsed = JSON.parse(content);
-          if (parsed.tasks && Array.isArray(parsed.tasks)) {
-            resolve(parsed);
+          const result = JSON.parse(data);
+          if (result.result) {
+            resolve(JSON.parse(result.result));
           } else {
-            reject(new Error('Invalid gist data structure'));
+            resolve(null);
           }
         } catch (e) {
-          reject(e);
+          resolve(null);
         }
       });
-    }).on('error', reject);
+    }).on('error', () => resolve(null));
   });
 }
 
-// Get tasks - always returns valid data
-async function getTasks() {
-  // If cache is empty or stale, try to refresh from gist
-  const now = Date.now();
-  const cacheEmpty = !tasksCache || tasksCache.tasks.length === 0;
-  const cacheStale = (now - lastGistFetch) > REFRESH_INTERVAL;
+async function redisSet(key, value) {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return false;
   
-  if (cacheEmpty || cacheStale) {
-    try {
-      console.log(`[${new Date().toLocaleTimeString()}] Fetching from Gist (${cacheEmpty ? 'cache empty' : 'cache stale'})...`);
-      const gistData = await fetchFromGist();
-      if (gistData.tasks.length > 0) {
-        tasksCache = gistData;
-        lastGistFetch = now;
-        saveTasksToFile(gistData);
-        console.log(`[${new Date().toLocaleTimeString()}] ✓ Loaded ${gistData.tasks.length} tasks from Gist`);
+  return new Promise((resolve, reject) => {
+    const url = new URL(`${UPSTASH_URL}/set/${key}`);
+    const postData = JSON.stringify(value);
+    
+    const req = https.request(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${UPSTASH_TOKEN}`,
+        'Content-Type': 'application/json'
       }
-    } catch (e) {
-      console.error(`[${new Date().toLocaleTimeString()}] Gist fetch failed:`, e.message);
-      // Fall back to file if gist fails
-      if (cacheEmpty) {
-        const fileData = loadTasksFromFile();
-        if (fileData) {
-          tasksCache = fileData;
-          console.log(`[${new Date().toLocaleTimeString()}] ✓ Loaded ${fileData.tasks.length} tasks from file`);
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const result = JSON.parse(data);
+          resolve(result.result === 'OK');
+        } catch (e) {
+          resolve(false);
         }
-      }
-    }
+      });
+    });
+    
+    req.on('error', () => resolve(false));
+    req.write(postData);
+    req.end();
+  });
+}
+
+// Get tasks - from cache or Redis
+async function getTasks() {
+  if (tasksCache && tasksCache.tasks && tasksCache.tasks.length > 0) {
+    return tasksCache;
   }
   
-  return tasksCache || DEFAULT_DATA;
+  console.log(`[${new Date().toLocaleTimeString()}] Loading tasks from Redis...`);
+  const data = await redisGet(TASKS_KEY);
+  
+  if (data && data.tasks && data.tasks.length > 0) {
+    tasksCache = data;
+    console.log(`[${new Date().toLocaleTimeString()}] ✓ Loaded ${data.tasks.length} tasks from Redis`);
+    return data;
+  }
+  
+  // Fallback to local file
+  try {
+    const fileData = JSON.parse(fs.readFileSync(path.join(__dirname, 'tasks.json'), 'utf8'));
+    if (fileData.tasks && fileData.tasks.length > 0) {
+      tasksCache = fileData;
+      // Migrate to Redis
+      await redisSet(TASKS_KEY, fileData);
+      console.log(`[${new Date().toLocaleTimeString()}] ✓ Migrated ${fileData.tasks.length} tasks to Redis`);
+      return fileData;
+    }
+  } catch (e) {}
+  
+  return DEFAULT_DATA;
 }
 
-// Save tasks - updates cache and file
-function saveTasks(data) {
+// Save tasks - to cache and Redis
+async function saveTasks(data) {
   if (!data || !data.tasks) return;
+  
   tasksCache = data;
-  lastLocalSave = Date.now(); // Mark that we just saved locally
-  saveTasksToFile(data);
-  console.log(`[${new Date().toLocaleTimeString()}] Saved ${data.tasks.length} tasks`);
+  const saved = await redisSet(TASKS_KEY, data);
+  
+  if (saved) {
+    console.log(`[${new Date().toLocaleTimeString()}] ✓ Saved ${data.tasks.length} tasks to Redis`);
+  } else {
+    console.log(`[${new Date().toLocaleTimeString()}] ⚠ Redis save failed, using cache only`);
+  }
+  
+  // Also save locally as backup
+  try {
+    fs.writeFileSync(path.join(__dirname, 'tasks.json'), JSON.stringify(data, null, 2));
+  } catch (e) {}
 }
 
-// Handle task operations (add, update, delete, comment)
+// Handle task operations
 function handleTaskOperation(data, body) {
   const { action, taskId, task, updates, comment } = body;
   
@@ -156,7 +165,7 @@ function handleTaskOperation(data, body) {
       break;
       
     default:
-      // Full replace (legacy)
+      // Full replace
       if (body.tasks) {
         data.columns = body.columns || data.columns;
         data.tasks = body.tasks;
@@ -166,61 +175,17 @@ function handleTaskOperation(data, body) {
   return data;
 }
 
-// Initialize on startup
+// Initialize
 async function init() {
   console.log(`
-🧞 Genie Task Dashboard
-━━━━━━━━━━━━━━━━━━━━━━━
-Starting up...
+🪔 The Lamp - Task Dashboard
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Database: ${UPSTASH_URL ? 'Upstash Redis ✓' : 'Local only ⚠'}
 `);
   
-  // Always fetch from gist on startup
-  try {
-    const gistData = await fetchFromGist();
-    if (gistData.tasks.length > 0) {
-      tasksCache = gistData;
-      lastGistFetch = Date.now();
-      saveTasksToFile(gistData);
-      console.log(`✓ Initialized with ${gistData.tasks.length} tasks from Gist`);
-    } else {
-      throw new Error('Gist has no tasks');
-    }
-  } catch (e) {
-    console.log('Gist fetch failed, trying local file...');
-    const fileData = loadTasksFromFile();
-    if (fileData && fileData.tasks.length > 0) {
-      tasksCache = fileData;
-      console.log(`✓ Initialized with ${fileData.tasks.length} tasks from file`);
-    } else {
-      tasksCache = DEFAULT_DATA;
-      console.log('⚠ Starting with empty data');
-    }
-  }
-  
-  // Periodic refresh from gist (but skip if there were recent local saves)
-  setInterval(async () => {
-    const timeSinceLastSave = Date.now() - lastLocalSave;
-    // Skip refresh if there was a local save in the last 10 minutes
-    if (lastLocalSave > 0 && timeSinceLastSave < 10 * 60 * 1000) {
-      console.log(`[${new Date().toLocaleTimeString()}] Skipping gist refresh (local save ${Math.round(timeSinceLastSave/1000)}s ago)`);
-      return;
-    }
-    
-    try {
-      const gistData = await fetchFromGist();
-      if (gistData.tasks.length > 0) {
-        // Only update if gist has more or equal tasks (prevent data loss)
-        if (gistData.tasks.length >= (tasksCache?.tasks?.length || 0)) {
-          tasksCache = gistData;
-          lastGistFetch = Date.now();
-          saveTasksToFile(gistData);
-          console.log(`[${new Date().toLocaleTimeString()}] ✓ Refreshed ${gistData.tasks.length} tasks from Gist`);
-        }
-      }
-    } catch (e) {
-      // Silent fail on periodic refresh
-    }
-  }, REFRESH_INTERVAL);
+  // Load initial data
+  const data = await getTasks();
+  console.log(`✓ Ready with ${data.tasks?.length || 0} tasks`);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -234,7 +199,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // GET /api/tasks - return current tasks
+  // GET /api/tasks
   if (req.url === '/api/tasks' && req.method === 'GET') {
     const tasks = await getTasks();
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -242,7 +207,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /api/tasks - update tasks
+  // POST /api/tasks
   if (req.url === '/api/tasks' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
@@ -251,7 +216,7 @@ const server = http.createServer(async (req, res) => {
         const payload = JSON.parse(body);
         let data = await getTasks();
         data = handleTaskOperation({ ...data }, payload);
-        saveTasks(data);
+        await saveTasks(data);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, saved: new Date().toISOString() }));
       } catch (e) {
@@ -262,7 +227,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /api/generate-image - generate celebration image via OpenAI
+  // POST /api/generate-image - DALL-E celebration image
   if (req.url === '/api/generate-image' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
@@ -333,19 +298,15 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /api/restore - force refresh from gist
-  if (req.url === '/api/restore' && req.method === 'POST') {
-    try {
-      const gistData = await fetchFromGist();
-      tasksCache = gistData;
-      lastGistFetch = Date.now();
-      saveTasksToFile(gistData);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, restored: gistData.tasks?.length || 0 }));
-    } catch (e) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: e.message }));
-    }
+  // GET /api/health
+  if (req.url === '/api/health' && req.method === 'GET') {
+    const tasks = await getTasks();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      status: 'ok', 
+      tasks: tasks.tasks?.length || 0,
+      redis: !!UPSTASH_URL
+    }));
     return;
   }
 
@@ -367,14 +328,12 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-// Start server
+// Start
 init().then(() => {
   server.listen(PORT, () => {
     console.log(`
-━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Running at: http://localhost:${PORT}
-Cloud backup: GitHub Gist
-Auto-refresh: Every 5 minutes
     `);
   });
 });
