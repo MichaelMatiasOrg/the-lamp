@@ -897,13 +897,14 @@
         font-size: 1rem;
       }
       
-      /* Edit modal - centered, not full screen */
+      /* Edit modal - responsive, centered */
       .edit-modal .modal-content {
-        max-width: 550px;
-        margin: 80px auto;
+        width: min(450px, 90vw);
+        max-width: 450px;
+        margin: 10vh auto;
         background: var(--bg-secondary);
         border-radius: var(--radius-lg);
-        max-height: calc(100vh - 160px);
+        max-height: 80vh;
         display: flex;
         flex-direction: column;
         box-shadow: 0 20px 60px rgba(0,0,0,0.5);
