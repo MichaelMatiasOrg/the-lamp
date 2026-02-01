@@ -1377,6 +1377,7 @@
     <button class="filter-btn active" data-filter="single" onclick="setTypeFilter('single')">📌 One-time</button>
     <button class="filter-btn" data-filter="recurring" onclick="setTypeFilter('recurring')">🔄 Recurring</button>
     <button class="filter-btn" data-filter="laptop" onclick="setTypeFilter('laptop')">💻 Laptop</button>
+    <button class="filter-btn" data-filter="mobile" onclick="setTypeFilter('mobile')">📱 Mobile</button>
   </div>
 
   <!-- Desktop Control Bar (replaces bottom nav on desktop) -->
@@ -1393,6 +1394,7 @@
         <button class="desktop-filter-btn active" data-filter="single" onclick="setTypeFilter('single')">📌 One-time</button>
         <button class="desktop-filter-btn" data-filter="recurring" onclick="setTypeFilter('recurring')">🔄 Recurring</button>
         <button class="desktop-filter-btn" data-filter="laptop" onclick="setTypeFilter('laptop')">💻 Laptop</button>
+        <button class="desktop-filter-btn" data-filter="mobile" onclick="setTypeFilter('mobile')">📱 Mobile</button>
       </div>
       <div class="desktop-actions">
         <button class="desktop-action-btn" onclick="openNewTask()">✨ New Wish</button>
@@ -1737,31 +1739,56 @@
           successCriteria: t.successCriteria || '',
           userJourney: t.userJourney || ''
         }));
+        // Set lastSavedTasks to enable rollback on failed saves
+        lastSavedTasks = JSON.parse(JSON.stringify(tasks));
+        localStorage.setItem('lamp-tasks', JSON.stringify(tasks));
         renderAll();
         updateStatus('connected', 'ONLINE');
       } catch (e) {
         const saved = localStorage.getItem('lamp-tasks');
-        if (saved) tasks = JSON.parse(saved);
+        if (saved) {
+          tasks = JSON.parse(saved);
+          lastSavedTasks = JSON.parse(JSON.stringify(tasks));
+        }
         renderAll();
         updateStatus('offline', 'OFFLINE');
       }
     }
 
+    let lastSavedTasks = null; // Track last successful state for rollback
+    
     async function saveTasks() {
       updateStatus('syncing', 'SAVING');
-      localStorage.setItem('lamp-tasks', JSON.stringify(tasks));
+      const tasksToSave = JSON.parse(JSON.stringify(tasks)); // Deep copy
       try {
         const res = await fetch('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ columns: COLUMN_ORDER, tasks })
+          body: JSON.stringify({ columns: COLUMN_ORDER, tasks: tasksToSave })
         });
-        if ((await res.json()).ok) {
+        const data = await res.json();
+        if (data.ok) {
+          // Only save to localStorage AFTER server confirms
+          localStorage.setItem('lamp-tasks', JSON.stringify(tasks));
+          lastSavedTasks = JSON.parse(JSON.stringify(tasks));
           updateStatus('connected', 'SAVED');
           setTimeout(() => updateStatus('connected', 'ONLINE'), 1000);
+          return true;
+        } else {
+          throw new Error('Server returned not ok');
         }
       } catch (e) {
-        updateStatus('offline', 'OFFLINE');
+        console.error('Save failed:', e);
+        updateStatus('offline', 'SAVE FAILED');
+        // Revert to last known good state
+        if (lastSavedTasks) {
+          tasks = JSON.parse(JSON.stringify(lastSavedTasks));
+          renderAll();
+          alert('Save failed. Your changes were reverted. Please try again.');
+        } else {
+          alert('Save failed. Please refresh and try again.');
+        }
+        return false;
       }
     }
 
@@ -1787,8 +1814,10 @@
         if (t.column !== currentColumn) return false;
         if (currentColumn === 'genie') return true;
         if (typeFilter === 'laptop') return t.needsLaptop;
-        // Hide laptop-only tasks unless laptop filter is active
+        if (typeFilter === 'mobile') return t.needsMobile;
+        // Hide laptop-only and mobile-only tasks unless their filter is active
         if (t.needsLaptop && typeFilter !== 'laptop') return false;
+        if (t.needsMobile && typeFilter !== 'mobile') return false;
         if (typeFilter === 'all') return true;
         return (t.type || 'single') === typeFilter;
       });
@@ -1843,6 +1872,7 @@
           <div class="task-footer">
             <span>${task.created}</span>
             ${task.needsLaptop ? '<span style="opacity:0.7">💻</span>' : ''}
+            ${task.needsMobile ? '<span style="opacity:0.7">📱</span>' : ''}
             ${task.image ? '<span style="opacity:0.7">📷</span>' : ''}
             ${(() => { const unread = getUnreadGenieComments(task); return unread > 0 ? `<span class="unread-badge">🧞 ${unread}</span>` : ""; })()}${commentCount > 0 ? `<span class="comments-count">💬 ${commentCount}</span>` : ""}
           </div>
@@ -1868,7 +1898,9 @@
         if (col !== 'genie' && typeFilter !== 'all') {
           colTasks = colTasks.filter(t => {
             if (typeFilter === 'laptop') return t.needsLaptop;
+            if (typeFilter === 'mobile') return t.needsMobile;
             if (t.needsLaptop) return false;
+            if (t.needsMobile) return false;
             return (t.type || 'single') === typeFilter;
           });
         }
@@ -1898,6 +1930,7 @@
                   <div class="kanban-card-meta">
                     ${task.type === 'recurring' ? '<span>🔄</span>' : ''}
                     ${task.needsLaptop ? '<span>💻</span>' : ''}
+                    ${task.needsMobile ? '<span>📱</span>' : ''}
                     ${task.image ? '<span>📷</span>' : ''}
                     ${unread > 0 ? `<span class="unread-badge">🧞 ${unread}</span>` : ''}
                     ${commentCount > 0 ? `<span style="color:var(--info)">💬 ${commentCount}</span>` : ''}
@@ -2039,13 +2072,17 @@
           <button class="move-btn primary" onclick="approveIdea('${id}')">✅ Approve</button>
         `;
       } else if (task.column === 'review') {
-        // Review tasks: option to mark for laptop review
+        // Review tasks: option to mark for laptop or mobile review
         const laptopBtn = task.needsLaptop 
           ? `<button class="move-btn" onclick="toggleLaptop('${id}')" style="background:var(--info)">💻 On Laptop</button>`
           : `<button class="move-btn" onclick="toggleLaptop('${id}')">💻 Laptop</button>`;
+        const mobileBtn = task.needsMobile 
+          ? `<button class="move-btn" onclick="toggleMobile('${id}')" style="background:var(--purple)">📱 On Mobile</button>`
+          : `<button class="move-btn" onclick="toggleMobile('${id}')">📱 Mobile</button>`;
         document.getElementById('move-actions').innerHTML = `
           ${canLeft ? `<button class="move-btn" onclick="moveTask('${id}', -1)">← ${COLUMNS[COLUMN_ORDER[colIdx - 1]].label}</button>` : ''}
           ${laptopBtn}
+          ${mobileBtn}
           ${canRight ? `<button class="move-btn primary" onclick="moveTask('${id}', 1)">${COLUMNS[COLUMN_ORDER[colIdx + 1]].label} →</button>` : ''}
         `;
       } else {
@@ -2221,6 +2258,15 @@
       const task = tasks.find(t => t.id === id);
       if (!task) return;
       task.needsLaptop = !task.needsLaptop;
+      viewTask(id); // Refresh the view
+      renderAll();
+      saveTasks();
+    }
+
+    function toggleMobile(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      task.needsMobile = !task.needsMobile;
       viewTask(id); // Refresh the view
       renderAll();
       saveTasks();
