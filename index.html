@@ -903,42 +903,106 @@
         font-size: 1rem;
       }
       
-      /* Edit modal - responsive, centered */
+      /* Edit modal - responsive, centered, polished */
+      .edit-modal {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.8);
+        backdrop-filter: blur(8px);
+      }
       .edit-modal .edit-content {
-        width: min(500px, 90vw);
-        max-width: 500px;
-        margin: 8vh auto;
-        background: var(--bg-secondary);
-        border-radius: var(--radius-lg);
-        max-height: 84vh;
+        width: min(520px, 92vw);
+        max-width: 520px;
+        margin: 0;
+        background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+        border-radius: var(--radius-xl);
+        max-height: 85vh;
         display: flex;
         flex-direction: column;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        box-shadow: 0 25px 80px rgba(0,0,0,0.6), 0 0 0 1px var(--border);
         padding: 0;
         overflow: hidden;
+        animation: modalSlideIn 0.2s ease-out;
+      }
+      @keyframes modalSlideIn {
+        from { opacity: 0; transform: scale(0.95) translateY(10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
       }
       .edit-modal .edit-header {
-        padding: 20px 24px;
+        padding: 24px 28px 20px;
         border-bottom: 1px solid var(--border);
         flex-shrink: 0;
+        background: var(--bg-tertiary);
+      }
+      .edit-modal .edit-header h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+      .edit-modal .modal-close {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        padding: 8px 16px;
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .edit-modal .modal-close:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--border-light);
       }
       .edit-modal .form-group {
-        padding: 0 24px;
+        padding: 0 28px;
+        margin-bottom: 20px;
       }
       .edit-modal .form-group:first-of-type {
-        padding-top: 24px;
+        padding-top: 28px;
+      }
+      .edit-modal .form-group label {
+        font-size: 0.8rem;
+        margin-bottom: 10px;
+      }
+      .edit-modal .form-group input,
+      .edit-modal .form-group textarea,
+      .edit-modal .form-group select {
+        background: var(--bg-primary);
+        border: 1px solid var(--border);
+        transition: all 0.15s ease;
+      }
+      .edit-modal .form-group input:focus,
+      .edit-modal .form-group textarea:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-dim);
       }
       .edit-modal .edit-actions {
-        padding: 24px;
+        padding: 20px 28px 24px;
         border-top: 1px solid var(--border);
         flex-shrink: 0;
+        background: var(--bg-tertiary);
+        position: static;
+        gap: 12px;
+      }
+      .edit-modal .btn-save {
+        flex: 2;
+        font-weight: 600;
+        transition: all 0.15s ease;
+      }
+      .edit-modal .btn-save:hover {
+        filter: brightness(1.1);
+        transform: translateY(-1px);
+      }
+      .edit-modal .btn-cancel,
+      .edit-modal .btn-delete {
+        flex: 1;
       }
       .edit-modal input,
       .edit-modal textarea {
-        font-size: 16px;
+        font-size: 15px;
       }
       .edit-modal textarea {
-        min-height: 100px;
+        min-height: 90px;
       }
       
       /* View modal with larger text */
