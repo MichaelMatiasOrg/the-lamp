@@ -2339,10 +2339,10 @@
           else if (h.type === 'delete') desc = 'Deleted: ' + h.taskTitle;
           
           return '<div style="padding:12px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;">' +
-            '<span style="font-size:1.2rem;">' + icon + '</span>' +
+            '<span style="font-size:1.4rem;">' + authorIcon + '</span>' +
             '<div style="flex:1;">' +
-              '<div style="color:var(--text-primary);font-size:0.9rem;">' + desc + '</div>' +
-              '<div style="color:var(--text-tertiary);font-size:0.75rem;margin-top:4px;">' + authorIcon + ' ' + h.author + ' • ' + time + '</div>' +
+              '<div style="color:var(--text-primary);font-size:0.9rem;">' + icon + ' ' + desc + '</div>' +
+              '<div style="color:var(--text-tertiary);font-size:0.75rem;margin-top:4px;">' + time + '</div>' +
             '</div>' +
           '</div>';
         }).join('');
