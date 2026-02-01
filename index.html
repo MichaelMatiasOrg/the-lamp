@@ -796,6 +796,12 @@
     }
 
     @media (min-width: 1024px) {
+      /* Desktop: No page scroll - components scroll internally */
+      html, body {
+        height: 100vh;
+        overflow: hidden;
+      }
+      
       /* Desktop: Better layout */
       .bottom-nav { 
         position: static;
@@ -898,32 +904,41 @@
       }
       
       /* Edit modal - responsive, centered */
-      .edit-modal .modal-content {
-        width: min(450px, 90vw);
-        max-width: 450px;
-        margin: 10vh auto;
+      .edit-modal .edit-content {
+        width: min(500px, 90vw);
+        max-width: 500px;
+        margin: 8vh auto;
         background: var(--bg-secondary);
         border-radius: var(--radius-lg);
-        max-height: 80vh;
+        max-height: 84vh;
         display: flex;
         flex-direction: column;
         box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        padding: 0;
+        overflow: hidden;
       }
       .edit-modal .edit-header {
         padding: 20px 24px;
         border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
       }
-      .edit-modal .edit-body {
+      .edit-modal .form-group {
+        padding: 0 24px;
+      }
+      .edit-modal .form-group:first-of-type {
+        padding-top: 24px;
+      }
+      .edit-modal .edit-actions {
         padding: 24px;
-        overflow-y: auto;
-        flex: 1;
+        border-top: 1px solid var(--border);
+        flex-shrink: 0;
       }
-      .edit-modal .edit-body input,
-      .edit-modal .edit-body textarea {
+      .edit-modal input,
+      .edit-modal textarea {
         font-size: 16px;
       }
-      .edit-modal .edit-body textarea {
-        min-height: 120px;
+      .edit-modal textarea {
+        min-height: 100px;
       }
       
       /* View modal with larger text */
