@@ -2,11 +2,16 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const { Redis } = require('@upstash/redis');
 
 const PORT = process.env.PORT || 3456;
-const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
-const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 const TASKS_KEY = 'lamp:tasks';
+
+// Initialize Redis client
+const redis = process.env.UPSTASH_REDIS_REST_URL ? new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+}) : null;
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -22,95 +27,26 @@ const DEFAULT_DATA = { columns: ['genie', 'inbox', 'todo', 'in_progress', 'revie
 // In-memory cache
 let tasksCache = null;
 
-// Upstash Redis REST API
-async function redisGet(key) {
-  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
-    console.log('Redis: Missing URL or TOKEN');
-    return null;
-  }
-  
-  return new Promise((resolve) => {
-    const url = `${UPSTASH_URL}/get/${key}`;
-    
-    https.get(url, { headers: { 'Authorization': `Bearer ${UPSTASH_TOKEN}` } }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const result = JSON.parse(data);
-          console.log('Redis GET response:', result.result ? 'has data' : 'empty');
-          if (result.result) {
-            resolve(JSON.parse(result.result));
-          } else {
-            resolve(null);
-          }
-        } catch (e) {
-          console.error('Redis GET parse error:', e.message);
-          resolve(null);
-        }
-      });
-    }).on('error', (e) => {
-      console.error('Redis GET error:', e.message);
-      resolve(null);
-    });
-  });
-}
-
-async function redisSet(key, value) {
-  if (!UPSTASH_URL || !UPSTASH_TOKEN) return false;
-  
-  return new Promise((resolve) => {
-    const postData = JSON.stringify(["SET", key, JSON.stringify(value)]);
-    const url = new URL(UPSTASH_URL);
-    
-    const req = https.request({
-      hostname: url.hostname,
-      port: 443,
-      path: '/',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${UPSTASH_TOKEN}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const result = JSON.parse(data);
-          console.log('Redis SET response:', result.result);
-          resolve(result.result === 'OK');
-        } catch (e) {
-          console.error('Redis SET parse error:', e.message);
-          resolve(false);
-        }
-      });
-    });
-    
-    req.on('error', (e) => {
-      console.error('Redis SET error:', e.message);
-      resolve(false);
-    });
-    
-    req.write(postData);
-    req.end();
-  });
-}
-
-// Get tasks - from cache or Redis
+// Get tasks from Redis
 async function getTasks() {
+  // Return cache if valid
   if (tasksCache && tasksCache.tasks && tasksCache.tasks.length > 0) {
     return tasksCache;
   }
   
-  console.log(`[${new Date().toLocaleTimeString()}] Loading tasks from Redis...`);
-  const data = await redisGet(TASKS_KEY);
-  
-  if (data && data.tasks && data.tasks.length > 0) {
-    tasksCache = data;
-    console.log(`[${new Date().toLocaleTimeString()}] ✓ Loaded ${data.tasks.length} tasks from Redis`);
-    return data;
+  // Try Redis
+  if (redis) {
+    try {
+      console.log('Loading tasks from Redis...');
+      const data = await redis.get(TASKS_KEY);
+      if (data && data.tasks && data.tasks.length > 0) {
+        tasksCache = data;
+        console.log(`✓ Loaded ${data.tasks.length} tasks from Redis`);
+        return data;
+      }
+    } catch (e) {
+      console.error('Redis GET error:', e.message);
+    }
   }
   
   // Fallback to local file
@@ -118,30 +54,38 @@ async function getTasks() {
     const fileData = JSON.parse(fs.readFileSync(path.join(__dirname, 'tasks.json'), 'utf8'));
     if (fileData.tasks && fileData.tasks.length > 0) {
       tasksCache = fileData;
-      // Migrate to Redis
-      await redisSet(TASKS_KEY, fileData);
-      console.log(`[${new Date().toLocaleTimeString()}] ✓ Migrated ${fileData.tasks.length} tasks to Redis`);
+      console.log(`✓ Loaded ${fileData.tasks.length} tasks from file`);
+      // Sync to Redis
+      if (redis) {
+        await redis.set(TASKS_KEY, fileData);
+        console.log('✓ Synced to Redis');
+      }
       return fileData;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.log('No local file');
+  }
   
   return DEFAULT_DATA;
 }
 
-// Save tasks - to cache and Redis
+// Save tasks
 async function saveTasks(data) {
   if (!data || !data.tasks) return;
   
   tasksCache = data;
-  const saved = await redisSet(TASKS_KEY, data);
   
-  if (saved) {
-    console.log(`[${new Date().toLocaleTimeString()}] ✓ Saved ${data.tasks.length} tasks to Redis`);
-  } else {
-    console.log(`[${new Date().toLocaleTimeString()}] ⚠ Redis save failed, using cache only`);
+  // Save to Redis
+  if (redis) {
+    try {
+      await redis.set(TASKS_KEY, data);
+      console.log(`✓ Saved ${data.tasks.length} tasks to Redis`);
+    } catch (e) {
+      console.error('Redis SET error:', e.message);
+    }
   }
   
-  // Also save locally as backup
+  // Also save locally
   try {
     fs.writeFileSync(path.join(__dirname, 'tasks.json'), JSON.stringify(data, null, 2));
   } catch (e) {}
@@ -196,12 +140,11 @@ async function init() {
   console.log(`
 🪔 The Lamp - Task Dashboard
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Database: ${UPSTASH_URL ? 'Upstash Redis ✓' : 'Local only ⚠'}
+Redis: ${redis ? '✓ Connected' : '✗ Not configured'}
 `);
   
-  // Load initial data
   const data = await getTasks();
-  console.log(`✓ Ready with ${data.tasks?.length || 0} tasks`);
+  console.log(`Ready with ${data.tasks?.length || 0} tasks`);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -243,7 +186,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // POST /api/generate-image - DALL-E celebration image
+  // POST /api/generate-image
   if (req.url === '/api/generate-image' && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
@@ -258,17 +201,17 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const prompt = `A cute, celebratory cartoon illustration for completing the task: "${taskTitle}". Style: minimal, friendly, warm colors, simple shapes, like a greeting card. No text.`;
+        const prompt = `A cute, celebratory cartoon for: "${taskTitle}". Style: minimal, friendly, warm colors. No text.`;
         
         const requestData = JSON.stringify({
           model: 'dall-e-3',
-          prompt: prompt,
+          prompt,
           n: 1,
           size: '1024x1024',
           quality: 'standard'
         });
 
-        const options = {
+        const apiReq = https.request({
           hostname: 'api.openai.com',
           path: '/v1/images/generations',
           method: 'POST',
@@ -277,20 +220,18 @@ const server = http.createServer(async (req, res) => {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Length': Buffer.byteLength(requestData)
           }
-        };
-
-        const apiReq = https.request(options, (apiRes) => {
+        }, (apiRes) => {
           let data = '';
           apiRes.on('data', chunk => data += chunk);
           apiRes.on('end', () => {
             try {
               const result = JSON.parse(data);
-              if (result.data && result.data[0] && result.data[0].url) {
+              if (result.data?.[0]?.url) {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ ok: true, imageUrl: result.data[0].url }));
               } else {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'No image generated', details: result }));
+                res.end(JSON.stringify({ error: 'No image generated' }));
               }
             } catch (e) {
               res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -316,12 +257,11 @@ const server = http.createServer(async (req, res) => {
 
   // GET /api/health
   if (req.url === '/api/health' && req.method === 'GET') {
-    const tasks = await getTasks();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ 
       status: 'ok', 
-      tasks: tasks.tasks?.length || 0,
-      redis: !!UPSTASH_URL
+      tasks: tasksCache?.tasks?.length || 0,
+      redis: !!redis
     }));
     return;
   }
@@ -347,9 +287,6 @@ const server = http.createServer(async (req, res) => {
 // Start
 init().then(() => {
   server.listen(PORT, () => {
-    console.log(`
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Running at: http://localhost:${PORT}
-    `);
+    console.log(`Running at http://localhost:${PORT}`);
   });
 });
