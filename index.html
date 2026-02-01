@@ -1043,14 +1043,16 @@
       /* === KANBAN BOARD LAYOUT === */
       .kanban-container {
         display: flex;
+        flex: 1;
         overflow-x: auto;
-        overflow-y: visible;
+        overflow-y: hidden;
         padding: 20px 24px;
         gap: 16px;
         scroll-snap-type: x mandatory;
         scrollbar-width: thin;
         scrollbar-color: var(--border) transparent;
         min-height: 0;
+        align-items: stretch;
       }
       
       .kanban-container::-webkit-scrollbar {
@@ -1070,7 +1072,8 @@
       .kanban-column {
         flex: 0 0 340px;
         min-width: 340px;
-        max-height: calc(100vh - 200px);
+        height: 100%;
+        max-height: none;
         display: flex;
         flex-direction: column;
         background: var(--bg-secondary);
