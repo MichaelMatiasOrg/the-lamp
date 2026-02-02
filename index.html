@@ -1576,6 +1576,7 @@
 
   <div class="type-filter" id="type-filter">
     <button class="filter-btn active" data-filter="all" onclick="setTypeFilter('all')">All</button>
+    <button class="filter-btn" data-filter="unread" onclick="setTypeFilter('unread')">🔔 Unread</button>
     <button class="filter-btn" data-filter="laptop" onclick="setTypeFilter('laptop')">💻 Laptop</button>
     <button class="filter-btn" data-filter="mobile" onclick="setTypeFilter('mobile')">📱 Mobile</button>
   </div>
@@ -1594,6 +1595,7 @@
       <div class="desktop-filters" id="desktop-type-filter">
         <span class="filter-label">Filter:</span>
         <button class="desktop-filter-btn active" data-filter="all" onclick="setTypeFilter('all')">All</button>
+        <button class="desktop-filter-btn" data-filter="unread" onclick="setTypeFilter('unread')">🔔 Unread</button>
         <button class="desktop-filter-btn" data-filter="laptop" onclick="setTypeFilter('laptop')">💻 Laptop</button>
         <button class="desktop-filter-btn" data-filter="mobile" onclick="setTypeFilter('mobile')">📱 Mobile</button>
       </div>
@@ -2187,6 +2189,7 @@
         // Apply type filter (except for genie)
         if (col !== 'genie' && typeFilter !== 'all') {
           colTasks = colTasks.filter(t => {
+            if (typeFilter === 'unread') return getUnreadGenieComments(t) > 0;
             if (typeFilter === 'laptop') return t.needsLaptop;
             if (typeFilter === 'mobile') return t.needsMobile;
             if (typeFilter === 'recurring') return t.type === 'recurring';
