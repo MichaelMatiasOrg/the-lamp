@@ -20,6 +20,17 @@ async function migrate() {
   for (const task of data.tasks) {
     console.log(`Migrating: ${task.id} - ${task.title.substring(0, 40)}...`);
     
+    // Parse created date safely
+    let createdAt = new Date().toISOString();
+    if (task.created) {
+      try {
+        const parsed = new Date(task.created);
+        if (!isNaN(parsed.getTime())) {
+          createdAt = parsed.toISOString();
+        }
+      } catch (e) {}
+    }
+    
     // Insert task
     const taskPayload = {
       id: task.id,
@@ -30,7 +41,7 @@ async function migrate() {
       column_name: task.column,
       priority: task.priority || 'medium',
       task_type: task.type || 'single',
-      created_at: task.created ? new Date(task.created).toISOString() : new Date().toISOString(),
+      created_at: createdAt,
       seen_at: task.seenAt || null,
       needs_laptop: task.needsLaptop || false
     };
@@ -55,11 +66,24 @@ async function migrate() {
     // Insert comments
     if (task.comments && task.comments.length > 0) {
       for (const comment of task.comments) {
+        // Parse time - handle various formats
+        let createdAt = new Date().toISOString();
+        if (comment.time) {
+          try {
+            const parsed = new Date(comment.time);
+            if (!isNaN(parsed.getTime())) {
+              createdAt = parsed.toISOString();
+            }
+          } catch (e) {
+            // Keep default
+          }
+        }
+        
         const commentPayload = {
           task_id: task.id,
           author: comment.author,
           text: comment.text,
-          created_at: comment.time ? new Date(comment.time).toISOString() : new Date().toISOString()
+          created_at: createdAt
         };
 
         const commentRes = await fetch(`${SUPABASE_URL}/rest/v1/comments`, {
