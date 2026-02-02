@@ -2055,9 +2055,13 @@
     }
 
     let lastSavedTasks = null; // Track last successful state for rollback
+    let ignoreSSEUntil = 0; // Ignore SSE-triggered reloads briefly after local changes
     
     // Action-based API calls (more efficient than bulk saves)
     async function saveAction(action, taskId, payload = {}) {
+      // Prevent SSE from overwriting our optimistic update
+      ignoreSSEUntil = Date.now() + 3000; // Ignore SSE for 3 seconds
+      
       updateStatus('syncing', 'SAVING');
       try {
         const res = await fetch('/api/tasks', {
@@ -3373,11 +3377,21 @@
       
       eventSource.addEventListener('tasks', (e) => {
         console.log('[SSE] Task update received');
+        // Ignore if we recently made a local change (prevents race condition)
+        if (Date.now() < ignoreSSEUntil) {
+          console.log('[SSE] Ignoring - recent local change');
+          return;
+        }
         loadTasks(); // Refresh on any task change
       });
       
       eventSource.addEventListener('comments', (e) => {
         console.log('[SSE] Comment update received');
+        // Ignore if we recently made a local change
+        if (Date.now() < ignoreSSEUntil) {
+          console.log('[SSE] Ignoring - recent local change');
+          return;
+        }
         loadTasks(); // Refresh on any comment change
       });
       
