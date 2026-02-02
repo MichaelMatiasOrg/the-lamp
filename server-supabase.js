@@ -338,15 +338,11 @@ async function bulkSaveTasks(frontendTasks) {
       }
     }
 
-    // Process deletions
-    for (const id of toDelete) {
-      try {
-        await supabaseQuery(`tasks?id=eq.${id}`, { method: 'DELETE' });
-        console.log(`[bulkSave] Deleted: ${id}`);
-        addAuditLog({ type: 'delete', taskId: id, taskTitle: 'unknown', author: 'michael' });
-      } catch (e) {
-        console.error(`[bulkSave] Failed to delete ${id}:`, e.message);
-      }
+    // NOTE: We do NOT auto-delete tasks from bulk save
+    // This prevents accidental data loss when frontend sends partial data
+    // Deletions must be explicit via action='delete'
+    if (toDelete.length > 0) {
+      console.log(`[bulkSave] Skipping ${toDelete.length} deletions (safety measure)`);
     }
 
     console.log('[bulkSave] ✓ Complete');
