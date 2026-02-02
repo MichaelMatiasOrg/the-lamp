@@ -852,6 +852,7 @@
 
     .btn-cancel { background: var(--bg-tertiary); color: var(--text-primary); }
     .btn-delete { background: rgba(255,69,58,0.15); color: var(--danger); }
+    .btn-archive { background: rgba(142,142,147,0.15); color: var(--text-secondary); }
     .btn-save { background: var(--accent); color: #000; }
 
     /* === STATS === */
@@ -1520,8 +1521,14 @@
     /* Card glow when has unread comments */
     .task-card.has-unread,
     .kanban-card.has-unread {
-      border-color: var(--accent) !important;
-      box-shadow: 0 0 12px rgba(255, 214, 10, 0.3);
+      border: 2px solid var(--accent) !important;
+      box-shadow: 0 0 16px rgba(255, 214, 10, 0.5), inset 0 0 8px rgba(255, 214, 10, 0.1);
+      animation: glow-pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes glow-pulse {
+      0%, 100% { box-shadow: 0 0 16px rgba(255, 214, 10, 0.5), inset 0 0 8px rgba(255, 214, 10, 0.1); }
+      50% { box-shadow: 0 0 24px rgba(255, 214, 10, 0.7), inset 0 0 12px rgba(255, 214, 10, 0.15); }
     }
 
   </style>
@@ -1563,6 +1570,7 @@
       <div class="desktop-nav">
         <button class="desktop-nav-btn active" data-view="tasks" onclick="switchView('tasks')">🪔 Wishes</button>
         <button class="desktop-nav-btn" data-view="recurring" onclick="switchView('recurring')">🔄 Recurring</button>
+        <button class="desktop-nav-btn" data-view="archived" onclick="switchView('archived')">📦 Archived</button>
         <button class="desktop-nav-btn" data-view="history" onclick="switchView('history')">📜 History</button>
         <button class="desktop-nav-btn" data-view="console" onclick="switchView('console')">🖥️ Console</button>
         <button class="desktop-nav-btn" data-view="stats" onclick="switchView('stats')">📊 Stats</button>
@@ -1610,7 +1618,10 @@
     <div class="modal-sheet">
       <div class="modal-header">
         <button class="modal-close" onclick="closeViewModal()">← Back</button>
-        <button class="modal-edit" onclick="editCurrentTask()">Edit</button>
+        <div style="display:flex;gap:8px;">
+          <button class="modal-archive" onclick="archiveFromView()" style="background:var(--bg-tertiary);border:1px solid var(--border);padding:8px 12px;border-radius:var(--radius-sm);color:var(--text-secondary);font-size:0.85rem;cursor:pointer;">📦</button>
+          <button class="modal-edit" onclick="editCurrentTask()">Edit</button>
+        </div>
       </div>
 
       <div class="view-section">
@@ -1738,6 +1749,7 @@
       
       <div class="edit-actions">
         <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+        <button class="btn-archive" id="archive-btn" onclick="archiveTask()">📦 Archive</button>
         <button class="btn-delete" id="delete-btn" onclick="deleteTask()">Delete</button>
         <button class="btn-save" onclick="saveTask()">Save</button>
       </div>
@@ -2031,8 +2043,9 @@
     function renderTasks() {
       const container = document.getElementById('task-container');
       // Genie column ignores type filter - shows all ideas
-      // Recurring tasks are excluded - they have their own dedicated page
+      // Recurring and archived tasks are excluded - they have their own dedicated pages
       let colTasks = tasks.filter(t => {
+        if (t.archived) return false; // Archived has its own page
         if (t.column !== currentColumn) return false;
         if (t.type === 'recurring') return false; // Recurring has its own page
         if (currentColumn === 'genie') return true;
@@ -2115,8 +2128,8 @@
       const kanbanColumns = ['genie', 'inbox', 'todo', 'in_progress', 'review', 'done'];
       
       container.innerHTML = kanbanColumns.map(col => {
-        // Filter out recurring tasks - they have their own dedicated page
-        let colTasks = tasks.filter(t => t.column === col && t.type !== 'recurring');
+        // Filter out recurring tasks and archived tasks - they have their own dedicated pages
+        let colTasks = tasks.filter(t => t.column === col && t.type !== 'recurring' && !t.archived);
         
         // Apply type filter (except for genie)
         if (col !== 'genie' && typeFilter !== 'all') {
@@ -2200,6 +2213,7 @@
           else if (currentView === 'history') renderHistory();
           else if (currentView === 'recurring') renderRecurring();
           else if (currentView === 'console') renderConsole();
+          else if (currentView === 'archived') renderArchived();
         }
       } else {
         // Mobile: always use task container
@@ -2211,6 +2225,7 @@
         else if (currentView === 'history') renderHistory();
         else if (currentView === 'recurring') renderRecurring();
         else if (currentView === 'console') renderConsole();
+        else if (currentView === 'archived') renderArchived();
       }
       
       // Update notification badges
@@ -2601,6 +2616,17 @@
       openEditModal(viewingTaskId);
     }
 
+    function archiveFromView() {
+      if (!viewingTaskId) return;
+      const task = tasks.find(t => t.id === viewingTaskId);
+      if (!task) return;
+      task.archived = true;
+      task.archivedAt = new Date().toISOString();
+      closeViewModal();
+      renderAll();
+      saveAction('update', viewingTaskId, { updates: { archived: true, archivedAt: task.archivedAt } });
+    }
+
     function openNewTask() {
       editingTaskId = null;
       document.getElementById('edit-title').textContent = 'New Wish';
@@ -2611,6 +2637,7 @@
       document.getElementById('task-priority').value = 'medium';
       document.getElementById('task-type').value = 'single';
       document.getElementById('delete-btn').style.display = 'none';
+      document.getElementById('archive-btn').style.display = 'none';
       document.getElementById('edit-modal').classList.add('active');
     }
 
@@ -2625,6 +2652,7 @@
       document.getElementById('task-priority').value = 'medium';
       document.getElementById('task-type').value = 'single';
       document.getElementById('delete-btn').style.display = 'none';
+      document.getElementById('archive-btn').style.display = 'none';
       document.getElementById('edit-modal').classList.add('active');
     }
 
@@ -2641,6 +2669,7 @@
       document.getElementById('task-priority').value = task.priority;
       document.getElementById('task-type').value = task.type || 'single';
       document.getElementById('delete-btn').style.display = 'block';
+      document.getElementById('archive-btn').style.display = 'block';
       
       // Load existing image if any
       if (task.image) {
@@ -2716,12 +2745,33 @@
     }
 
     function deleteTask() {
-      if (!editingTaskId || !confirm('Delete this wish?')) return;
+      if (!editingTaskId || !confirm('Delete this wish permanently?')) return;
       const taskIdToDelete = editingTaskId;
       tasks = tasks.filter(t => t.id !== taskIdToDelete);
       closeEditModal();
       renderAll();
       saveAction('delete', taskIdToDelete);
+    }
+
+    function archiveTask() {
+      if (!editingTaskId) return;
+      const task = tasks.find(t => t.id === editingTaskId);
+      if (!task) return;
+      task.archived = true;
+      task.archivedAt = new Date().toISOString();
+      closeEditModal();
+      renderAll();
+      saveAction('update', editingTaskId, { updates: { archived: true, archivedAt: task.archivedAt } });
+    }
+
+    function unarchiveTask(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      task.archived = false;
+      task.archivedAt = null;
+      task.column = 'inbox'; // Return to inbox
+      renderAll();
+      saveAction('update', id, { updates: { archived: false, archivedAt: null, column: 'inbox' } });
     }
 
     function switchView(view) {
@@ -2905,6 +2955,65 @@
                   💬 ${task.comments.length} comment${task.comments.length !== 1 ? 's' : ''}
                 </div>
               ` : ''}
+            </div>
+          `;
+        });
+        
+        html += '</div>';
+      }
+      
+      container.innerHTML = html;
+    }
+
+    function renderArchived() {
+      const container = document.getElementById('task-container');
+      const archivedTasks = tasks.filter(t => t.archived);
+      
+      // Sort by archived date, most recent first
+      archivedTasks.sort((a, b) => new Date(b.archivedAt || 0) - new Date(a.archivedAt || 0));
+      
+      let html = `
+        <h2 style="margin:0 0 20px;color:var(--text-secondary);display:flex;align-items:center;gap:10px;">
+          📦 Archived Wishes
+          <span style="font-size:0.7em;color:var(--text-tertiary);font-weight:normal;">(${archivedTasks.length} archived)</span>
+        </h2>
+      `;
+      
+      if (archivedTasks.length === 0) {
+        html += `
+          <div style="padding:40px 20px;text-align:center;color:var(--text-tertiary);">
+            <div style="font-size:3rem;margin-bottom:16px;">📦</div>
+            <p>No archived wishes</p>
+            <p style="font-size:0.85rem;margin-top:8px;">Archive wishes you want to hide but keep for reference</p>
+          </div>
+        `;
+      } else {
+        html += '<div style="display:grid;gap:12px;">';
+        
+        archivedTasks.forEach(task => {
+          const archivedDate = task.archivedAt 
+            ? new Date(task.archivedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'Unknown date';
+          
+          html += `
+            <div style="padding:16px;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border);opacity:0.8;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+                <div style="flex:1;">
+                  <div style="font-weight:600;margin-bottom:6px;color:var(--text-secondary);">${task.title}</div>
+                  <div style="font-size:0.85rem;color:var(--text-tertiary);line-height:1.5;">${task.description ? task.description.substring(0, 150) + (task.description.length > 150 ? '...' : '') : 'No description'}</div>
+                  <div style="font-size:0.75rem;color:var(--text-tertiary);margin-top:8px;">
+                    📦 Archived on ${archivedDate}
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <button onclick="unarchiveTask('${task.id}')" style="padding:8px 12px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.8rem;cursor:pointer;">
+                    ↩️ Restore
+                  </button>
+                  <button onclick="viewTask('${task.id}')" style="padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-secondary);font-size:0.8rem;cursor:pointer;">
+                    👁️ View
+                  </button>
+                </div>
+              </div>
             </div>
           `;
         });
