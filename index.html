@@ -1776,12 +1776,12 @@
     const COLUMNS = {
       genie: { label: 'Genie', icon: '🧞' },
       inbox: { label: 'Inbox', icon: '📥' },
-      todo: { label: 'Queued', icon: '📋' },
       in_progress: { label: 'Granting', icon: '⚡' },
+      blocked: { label: 'Blocked', icon: '🚧' },
       review: { label: 'Review', icon: '👀' },
       done: { label: 'Granted', icon: '✨' }
     };
-    const COLUMN_ORDER = ['genie', 'inbox', 'todo', 'in_progress', 'review', 'done'];
+    const COLUMN_ORDER = ['genie', 'inbox', 'in_progress', 'blocked', 'review', 'done'];
 
     let tasks = [];
     let currentColumn = 'inbox';
@@ -1986,12 +1986,20 @@
       try {
         const res = await fetch('/api/tasks');
         const data = await res.json();
-        tasks = (data.tasks || []).map(t => ({
-          ...t,
-          comments: t.comments || [],
-          successCriteria: t.successCriteria || '',
-          userJourney: t.userJourney || ''
-        }));
+        tasks = (data.tasks || []).map(t => {
+          // Migrate old column names
+          let column = t.column;
+          if (column === 'todo' || column === 'invalid_column') {
+            column = 'inbox'; // Move queued/invalid tasks to inbox
+          }
+          return {
+            ...t,
+            column,
+            comments: t.comments || [],
+            successCriteria: t.successCriteria || '',
+            userJourney: t.userJourney || ''
+          };
+        });
         // Set lastSavedTasks to enable rollback on failed saves
         lastSavedTasks = JSON.parse(JSON.stringify(tasks));
         localStorage.setItem('lamp-tasks', JSON.stringify(tasks));
@@ -2170,7 +2178,7 @@
       if (!container) return;
       
       // Order: Inbox, To Do, In Progress, Review (skip Genie and Done for main Kanban view, add as last columns)
-      const kanbanColumns = ['genie', 'inbox', 'todo', 'in_progress', 'review', 'done'];
+      const kanbanColumns = ['genie', 'inbox', 'in_progress', 'blocked', 'review', 'done'];
       
       container.innerHTML = kanbanColumns.map(col => {
         // Filter out recurring tasks and archived tasks - they have their own dedicated pages
