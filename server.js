@@ -38,6 +38,7 @@ const HISTORY_KEY = 'lamp:history';
 // Supabase configuration for persistent audit logging
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://yjvecmrsfivmgfnikxsc.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || '';
+const SERVICE_NAME = process.env.SERVICE_NAME || 'unknown'; // Set to 'production' or 'staging' in Render
 
 // Log to Supabase audit table (fire-and-forget, non-blocking)
 async function logToSupabase(entry) {
@@ -55,7 +56,7 @@ async function logToSupabase(entry) {
       to_column: entry.to || null,
       author: entry.author || 'unknown',
       metadata: entry.metadata || null,
-      session_id: entry.sessionId || null
+      service: SERVICE_NAME
     };
     
     const response = await fetch(`${SUPABASE_URL}/rest/v1/lamp_audit`, {
