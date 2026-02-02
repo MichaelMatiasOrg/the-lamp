@@ -170,13 +170,20 @@
 
     .quick-add button {
       padding: 14px 24px;
-      background: var(--accent);
+      background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
       border: none;
       border-radius: var(--radius-lg);
-      color: #000;
+      color: #fff;
       font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
+      box-shadow: 0 2px 8px rgba(124, 58, 237, 0.4);
+      transition: all 0.2s;
+    }
+    
+    .quick-add button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(124, 58, 237, 0.5);
     }
 
     /* === TABS === */
@@ -1110,9 +1117,7 @@
       
       /* Filter row better positioned */
       .filter-row {
-        padding: 0 40px 16px;
-        max-width: 1400px;
-        margin: 0 auto;
+        padding: 0 24px 16px;
       }
       
       /* Stats row improvement */
@@ -1134,12 +1139,14 @@
         overflow-x: auto;
         overflow-y: hidden;
         padding: 20px 24px;
-        gap: 16px;
+        gap: 12px;
         scroll-snap-type: x mandatory;
         scrollbar-width: thin;
         scrollbar-color: var(--border) transparent;
         min-height: 0;
         align-items: stretch;
+        width: 100%;
+        box-sizing: border-box;
       }
       
       .kanban-container::-webkit-scrollbar {
@@ -1157,8 +1164,9 @@
       }
       
       .kanban-column {
-        flex: 0 0 340px;
-        min-width: 340px;
+        flex: 1 1 0;
+        min-width: 200px;
+        max-width: none;
         height: 100%;
         max-height: none;
         display: flex;
@@ -1410,19 +1418,20 @@
       
       .desktop-action-btn {
         padding: 10px 20px;
-        background: var(--accent);
+        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
         border: none;
         border-radius: var(--radius-md);
-        color: #000;
+        color: #fff;
         font-size: 0.9rem;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
+        box-shadow: 0 2px 8px rgba(124, 58, 237, 0.4);
       }
       
       .desktop-action-btn:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(255, 214, 10, 0.3);
+        box-shadow: 0 4px 16px rgba(124, 58, 237, 0.5);
       }
       
       .desktop-action-btn.secondary {
@@ -1439,10 +1448,9 @@
       /* Hide bottom nav on desktop */
       .bottom-nav { display: none; }
       .task-container {
-        padding: 20px 40px 60px;
-        max-width: 1400px;
-        margin: 0 auto;
+        padding: 20px 24px 60px;
         width: 100%;
+        box-sizing: border-box;
       }
     }
     
@@ -1536,7 +1544,7 @@
     <div class="quick-add-inner">
       <input type="text" id="quick-input" placeholder="Make a wish..." enterkeyhint="send">
       <button id="voice-btn" onclick="toggleVoiceRecording()" title="Voice wish">🎤</button>
-      <button onclick="smartAdd()">✨ Wish</button>
+      <button onclick="smartAdd()">🪄 Wish</button>
     </div>
   </div>
 
@@ -1567,7 +1575,7 @@
         <button class="desktop-filter-btn" data-filter="mobile" onclick="setTypeFilter('mobile')">📱 Mobile</button>
       </div>
       <div class="desktop-actions">
-        <button class="desktop-action-btn" onclick="openNewTask()">✨ New Wish</button>
+        <button class="desktop-action-btn" onclick="openNewTask()">🪄 New Wish</button>
         <button class="desktop-action-btn secondary" onclick="openLampFeedback()">🐛 Lamp Feedback</button>
       </div>
     </div>
