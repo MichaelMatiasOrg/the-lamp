@@ -1,6 +1,6 @@
 {
   "name": "genie-dashboard",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Genie Task Dashboard - Kanban for AI tasks with real-time sync",
   "main": "server.js",
   "scripts": {

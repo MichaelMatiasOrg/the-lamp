@@ -1896,7 +1896,7 @@
       const title = input.value.trim();
       if (!title) return;
 
-      tasks.push({
+      const newTask = {
         id: Date.now().toString(),
         title,
         description: '',
@@ -1907,12 +1907,13 @@
         priority: 'medium',
         type: 'single',
         comments: []
-      });
+      };
+      tasks.push(newTask);
       showWishSparkle();
 
       input.value = '';
       renderAll();
-      saveTasks();
+      saveAction('add', newTask.id, { task: newTask });
     }
 
     async function loadTasks() {
@@ -1943,6 +1944,31 @@
     }
 
     let lastSavedTasks = null; // Track last successful state for rollback
+    
+    // Action-based API calls (more efficient than bulk saves)
+    async function saveAction(action, taskId, payload = {}) {
+      updateStatus('syncing', 'SAVING');
+      try {
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, taskId, ...payload })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          localStorage.setItem('lamp-tasks', JSON.stringify(tasks));
+          updateStatus('connected', 'SAVED');
+          setTimeout(() => updateStatus('connected', 'ONLINE'), 1000);
+          return true;
+        } else {
+          throw new Error(data.errors?.join(', ') || 'Server returned not ok');
+        }
+      } catch (e) {
+        console.error('Save failed:', e);
+        updateStatus('offline', 'SAVE FAILED');
+        return false;
+      }
+    }
     
     async function saveTasks() {
       updateStatus('syncing', 'SAVING');
@@ -2197,7 +2223,7 @@
       viewingTaskId = id;
       task.seenAt = Date.now();
       renderAll(); // Update task cards immediately to clear unread badge
-      saveTasks();
+      saveAction('update', id, { updates: { seenAt: task.seenAt } });
       document.getElementById('view-title').textContent = task.title;
       document.getElementById('view-desc').innerHTML = linkify(task.description) || 'No description provided';
       
@@ -2365,7 +2391,7 @@
       task.subtasks.push({ text, done: false });
       input.value = '';
       renderSubtasks(task);
-      await saveTasks();
+      await saveAction('update', viewingTaskId, { updates: { subtasks: task.subtasks } });
     }
 
     async function toggleSubtask(index) {
@@ -2374,7 +2400,7 @@
 
       task.subtasks[index].done = !task.subtasks[index].done;
       renderSubtasks(task);
-      await saveTasks();
+      await saveAction('update', viewingTaskId, { updates: { subtasks: task.subtasks } });
     }
 
     async function deleteSubtask(index) {
@@ -2383,7 +2409,7 @@
 
       task.subtasks.splice(index, 1);
       renderSubtasks(task);
-      await saveTasks();
+      await saveAction('update', viewingTaskId, { updates: { subtasks: task.subtasks } });
     }
 
     function escapeHtml(text) {
@@ -2457,7 +2483,7 @@
       clearCommentImage();
 
       try {
-        await saveTasks();
+        await saveAction('comment', viewingTaskId, { comment });
         // Show success feedback
         sendBtn.textContent = '✓';
         sendBtn.style.background = 'var(--success)';
@@ -2505,7 +2531,7 @@
       
       if (viewingTaskId === id) viewTask(id);
       renderAll();
-      saveTasks();
+      saveAction('update', id, { updates: { column: task.column } });
     }
 
     async function generateCelebrationImage(task) {
@@ -2518,7 +2544,7 @@
         const data = await res.json();
         if (data.ok && data.imageUrl) {
           task.celebrationImage = data.imageUrl;
-          saveTasks();
+          saveAction('update', task.id, { updates: { celebrationImage: data.imageUrl } });
           renderAll();
         }
       } catch (e) {
@@ -2532,7 +2558,7 @@
       task.column = 'inbox';
       closeViewModal();
       renderAll();
-      saveTasks();
+      saveAction('update', id, { updates: { column: 'inbox' } });
     }
 
     function discardIdea(id) {
@@ -2540,7 +2566,7 @@
       tasks = tasks.filter(t => t.id !== id);
       closeViewModal();
       renderAll();
-      saveTasks();
+      saveAction('delete', id);
     }
 
     function toggleLaptop(id) {
@@ -2549,7 +2575,7 @@
       task.needsLaptop = !task.needsLaptop;
       viewTask(id); // Refresh the view
       renderAll();
-      saveTasks();
+      saveAction('update', id, { updates: { needsLaptop: task.needsLaptop } });
     }
 
     function toggleMobile(id) {
@@ -2558,7 +2584,7 @@
       task.needsMobile = !task.needsMobile;
       viewTask(id); // Refresh the view
       renderAll();
-      saveTasks();
+      saveAction('update', id, { updates: { needsMobile: task.needsMobile } });
     }
 
     function editCurrentTask() {
@@ -2662,28 +2688,32 @@
       if (editingTaskId) {
         const task = tasks.find(t => t.id === editingTaskId);
         if (task) Object.assign(task, data);
+        closeEditModal();
+        renderAll();
+        saveAction('update', editingTaskId, { updates: data });
       } else {
-        tasks.push({
+        const newTask = {
           id: Date.now().toString(),
           ...data,
           column: 'inbox',
           created: new Date().toISOString().split('T')[0],
           comments: []
-        });
-      showWishSparkle();
+        };
+        tasks.push(newTask);
+        showWishSparkle();
+        closeEditModal();
+        renderAll();
+        saveAction('add', newTask.id, { task: newTask });
       }
-
-      closeEditModal();
-      renderAll();
-      saveTasks();
     }
 
     function deleteTask() {
       if (!editingTaskId || !confirm('Delete this wish?')) return;
-      tasks = tasks.filter(t => t.id !== editingTaskId);
+      const taskIdToDelete = editingTaskId;
+      tasks = tasks.filter(t => t.id !== taskIdToDelete);
       closeEditModal();
       renderAll();
-      saveTasks();
+      saveAction('delete', taskIdToDelete);
     }
 
     function switchView(view) {
