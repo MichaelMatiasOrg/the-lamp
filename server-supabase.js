@@ -462,3 +462,4 @@ server.listen(PORT, () => {
   console.log(`   Service: ${SERVICE_NAME}`);
   console.log(`   Supabase: ${SUPABASE_URL.substring(0, 40)}...`);
 });
+// Force deploy Mon Feb  2 18:04:49 IST 2026
