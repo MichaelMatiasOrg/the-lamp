@@ -1,3 +1,4 @@
 node_modules/
 tasks.json
 backups/*.json
+.env

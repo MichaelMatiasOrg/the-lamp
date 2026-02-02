@@ -1,10 +1,13 @@
+require('dotenv').config();
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const { createClient } = require('@supabase/supabase-js');
 
 const PORT = process.env.PORT || 3456;
+
+// Local mock mode - no real database
+const LOCAL_MODE = process.env.LOCAL_MODE === 'true' || (!process.env.SUPABASE_ANON_KEY && process.env.SERVICE_NAME !== 'production' && process.env.SERVICE_NAME !== 'staging');
 
 // Supabase configuration
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://yjvecmrsfivmgfnikxsc.supabase.co';
@@ -14,18 +17,24 @@ const SERVICE_NAME = process.env.SERVICE_NAME || 'local';
 const GIST_ID = process.env.GIST_ID || 'efa1580eefda602e38d5517799c7e84e';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
-// Fail fast if Supabase not configured
-if (!SUPABASE_ANON_KEY) {
-  console.error('❌ FATAL: SUPABASE_ANON_KEY environment variable is required');
-  console.error('   Set it in your environment or .env file');
-  process.exit(1);
-}
+let supabase = null;
+let supabaseAdmin = null;
 
-// Initialize Supabase clients
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const supabaseAdmin = SUPABASE_SERVICE_KEY 
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-  : supabase;
+if (LOCAL_MODE) {
+  console.log('🧪 Running in LOCAL MOCK MODE - no database connection');
+} else {
+  if (!SUPABASE_ANON_KEY) {
+    console.error('❌ FATAL: SUPABASE_ANON_KEY environment variable is required');
+    console.error('   Set it in your environment or .env file');
+    console.error('   Or set LOCAL_MODE=true for mock data');
+    process.exit(1);
+  }
+  const { createClient } = require('@supabase/supabase-js');
+  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  supabaseAdmin = SUPABASE_SERVICE_KEY 
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    : supabase;
+}
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -60,6 +69,141 @@ const cache = {
   }
 };
 
+// ============ LOCAL MOCK DATA (from server-local.js) ============
+const mockData = {
+  tasks: [
+    {
+      id: 'task-1',
+      title: 'Fix login page responsive design',
+      description: 'The login page breaks on mobile devices under 380px width',
+      successCriteria: 'Login form works on all screen sizes down to 320px',
+      userJourney: 'User opens app on phone → sees broken layout → frustration',
+      column: 'done',
+      priority: 'high',
+      type: 'single',
+      created: '2026-01-28',
+      needsLaptop: false,
+      comments: [
+        { author: 'genie', text: 'Fixed flexbox layout and added media queries', time: '2026-01-29T10:30:00Z' },
+        { author: 'michael', text: 'Looks great! Approved.', time: '2026-01-29T14:00:00Z' }
+      ]
+    },
+    {
+      id: 'task-2',
+      title: 'Implement dark mode toggle',
+      description: 'Add a toggle in settings to switch between light and dark themes',
+      successCriteria: 'Toggle persists across sessions, smooth transition animation',
+      userJourney: 'User clicks settings → toggles dark mode → theme changes instantly',
+      column: 'review',
+      priority: 'medium',
+      type: 'single',
+      created: '2026-01-30',
+      needsLaptop: false,
+      comments: [
+        { author: 'genie', text: 'Implemented using CSS variables. Ready for review.', time: '2026-02-01T16:00:00Z' }
+      ]
+    },
+    {
+      id: 'task-3',
+      title: 'Add keyboard shortcuts documentation',
+      description: 'Create a help modal showing all available keyboard shortcuts',
+      successCriteria: 'Press ? to show modal with all shortcuts listed',
+      userJourney: 'Power user wants to know shortcuts → presses ? → sees comprehensive list',
+      column: 'in_progress',
+      priority: 'low',
+      type: 'single',
+      created: '2026-02-01',
+      needsLaptop: false,
+      comments: [
+        { author: 'genie', text: 'Working on the modal design now', time: '2026-02-02T09:00:00Z' }
+      ]
+    },
+    {
+      id: 'task-4',
+      title: 'Optimize image loading performance',
+      description: 'Images are loading slowly on the dashboard. Implement lazy loading and compression.',
+      successCriteria: 'LCP under 2.5s, images lazy load below the fold',
+      userJourney: 'User loads dashboard → sees fast initial render → images load as they scroll',
+      column: 'todo',
+      priority: 'high',
+      type: 'single',
+      created: '2026-02-01',
+      needsLaptop: true,
+      comments: []
+    },
+    {
+      id: 'task-5',
+      title: 'Weekly database backup verification',
+      description: 'Check that automated backups are running and restorable',
+      successCriteria: 'Backup exists, test restore succeeds',
+      userJourney: 'Ops runs weekly → verifies backup integrity → peace of mind',
+      column: 'inbox',
+      priority: 'medium',
+      type: 'recurring',
+      created: '2026-02-02',
+      needsLaptop: false,
+      comments: []
+    },
+    {
+      id: 'task-6',
+      title: 'Research OAuth2 providers for SSO',
+      description: 'Evaluate Google, GitHub, and Microsoft for single sign-on integration',
+      successCriteria: 'Comparison doc with pros/cons and recommendation',
+      userJourney: 'Team reviews options → picks best fit → implements SSO',
+      column: 'genie',
+      priority: 'medium',
+      type: 'single',
+      created: '2026-02-02',
+      needsLaptop: false,
+      comments: [
+        { author: 'michael', text: 'Please focus on ease of implementation and cost', time: '2026-02-02T08:00:00Z' }
+      ]
+    },
+    {
+      id: 'task-7',
+      title: 'Fix memory leak in websocket handler',
+      description: 'WebSocket connections are not being cleaned up properly on disconnect',
+      successCriteria: 'Memory usage stable after 1000+ connection cycles',
+      userJourney: 'Server runs for days → memory stays constant → no crashes',
+      column: 'todo',
+      priority: 'high',
+      type: 'single',
+      created: '2026-02-02',
+      needsLaptop: true,
+      comments: []
+    },
+    {
+      id: 'task-8',
+      title: 'Update dependencies to latest versions',
+      description: 'Run npm audit and update all packages with security vulnerabilities',
+      successCriteria: 'npm audit shows 0 vulnerabilities, all tests pass',
+      userJourney: 'Dev runs update → fixes vulnerabilities → CI passes',
+      column: 'inbox',
+      priority: 'medium',
+      type: 'single',
+      created: '2026-02-02',
+      needsLaptop: false,
+      comments: []
+    }
+  ],
+  history: [
+    { type: 'add', taskId: 'task-1', taskTitle: 'Fix login page responsive design', author: 'michael', time: '2026-01-28T09:00:00Z', service: 'local' },
+    { type: 'move', taskId: 'task-1', taskTitle: 'Fix login page responsive design', from: 'inbox', to: 'in_progress', author: 'genie', time: '2026-01-28T10:00:00Z', service: 'local' },
+    { type: 'move', taskId: 'task-1', taskTitle: 'Fix login page responsive design', from: 'in_progress', to: 'review', author: 'genie', time: '2026-01-29T10:30:00Z', service: 'local' },
+    { type: 'move', taskId: 'task-1', taskTitle: 'Fix login page responsive design', from: 'review', to: 'done', author: 'michael', time: '2026-01-29T14:00:00Z', service: 'local' },
+    { type: 'add', taskId: 'task-2', taskTitle: 'Implement dark mode toggle', author: 'michael', time: '2026-01-30T11:00:00Z', service: 'local' },
+    { type: 'move', taskId: 'task-2', taskTitle: 'Implement dark mode toggle', from: 'inbox', to: 'review', author: 'genie', time: '2026-02-01T16:00:00Z', service: 'local' },
+    { type: 'add', taskId: 'task-3', taskTitle: 'Add keyboard shortcuts documentation', author: 'michael', time: '2026-02-01T08:00:00Z', service: 'local' },
+    { type: 'move', taskId: 'task-3', taskTitle: 'Add keyboard shortcuts documentation', from: 'inbox', to: 'in_progress', author: 'genie', time: '2026-02-02T09:00:00Z', service: 'local' },
+    { type: 'add', taskId: 'task-4', taskTitle: 'Optimize image loading performance', author: 'michael', time: '2026-02-01T14:00:00Z', service: 'local' },
+    { type: 'add', taskId: 'task-5', taskTitle: 'Weekly database backup verification', author: 'michael', time: '2026-02-02T07:00:00Z', service: 'local' },
+    { type: 'add', taskId: 'task-6', taskTitle: 'Research OAuth2 providers for SSO', author: 'michael', time: '2026-02-02T07:30:00Z', service: 'local' },
+    { type: 'add', taskId: 'task-7', taskTitle: 'Fix memory leak in websocket handler', author: 'michael', time: '2026-02-02T10:00:00Z', service: 'local' },
+    { type: 'add', taskId: 'task-8', taskTitle: 'Update dependencies to latest versions', author: 'michael', time: '2026-02-02T11:00:00Z', service: 'local' }
+  ],
+  genieStatus: { active: false, sessions: [], currentTask: null, updatedAt: null }
+};
+
 // ============ VALIDATION HELPERS ============
 
 function sanitizeId(id) {
@@ -78,13 +222,13 @@ function validateTask(task) {
     errors.push('Title must be 500 characters or less');
   }
   if (task.column && !COLUMNS.includes(task.column)) {
-    errors.push(\`Invalid column: \${task.column}\`);
+    errors.push(`Invalid column: ${task.column}`);
   }
   if (task.priority && !['low', 'medium', 'high'].includes(task.priority)) {
-    errors.push(\`Invalid priority: \${task.priority}\`);
+    errors.push(`Invalid priority: ${task.priority}`);
   }
   if (task.type && !['single', 'recurring'].includes(task.type)) {
-    errors.push(\`Invalid type: \${task.type}\`);
+    errors.push(`Invalid type: ${task.type}`);
   }
   return { valid: errors.length === 0, errors };
 }
@@ -104,6 +248,11 @@ function validateComment(comment) {
 // ============ DATA ACCESS ============
 
 async function getTasks() {
+  // Local mock mode
+  if (LOCAL_MODE) {
+    return { columns: COLUMNS, tasks: mockData.tasks };
+  }
+
   if (cache.isValid()) {
     console.log('[cache] HIT - returning cached tasks');
     return cache.tasks;
@@ -146,7 +295,7 @@ async function getTasks() {
     const result = { columns: COLUMNS, tasks: formattedTasks };
     cache.set(result);
     
-    console.log(\`✓ Fetched \${formattedTasks.length} tasks from Supabase\`);
+    console.log(`✓ Fetched ${formattedTasks.length} tasks from Supabase`);
     return result;
   } catch (e) {
     console.error('getTasks error:', e.message);
@@ -155,6 +304,11 @@ async function getTasks() {
 }
 
 async function getHistory() {
+  // Local mock mode
+  if (LOCAL_MODE) {
+    return mockData.history;
+  }
+
   try {
     const { data, error } = await supabase
       .from('lamp_audit')
@@ -181,6 +335,13 @@ async function getHistory() {
 }
 
 async function addAuditLog(entry) {
+  // Local mock mode
+  if (LOCAL_MODE) {
+    mockData.history.unshift({ ...entry, time: new Date().toISOString(), service: 'local' });
+    console.log(`[mock] Audit: ${entry.type} ${entry.taskId}`);
+    return;
+  }
+
   try {
     await supabaseAdmin.from('lamp_audit').insert({
       event_type: entry.type,
@@ -191,7 +352,7 @@ async function addAuditLog(entry) {
       author: entry.author || 'unknown',
       service: SERVICE_NAME
     });
-    console.log(\`✓ Audit: \${entry.type} \${entry.taskId}\`);
+    console.log(`✓ Audit: ${entry.type} ${entry.taskId}`);
   } catch (e) {
     console.error('Audit log error:', e.message);
   }
@@ -200,6 +361,11 @@ async function addAuditLog(entry) {
 // ============ GENIE STATUS (replaces Redis) ============
 
 async function getGenieStatus() {
+  // Local mock mode
+  if (LOCAL_MODE) {
+    return mockData.genieStatus;
+  }
+
   try {
     const { data, error } = await supabase
       .from('genie_status')
@@ -246,7 +412,7 @@ async function updateGenieStatus(sessionKey, status) {
     }, { onConflict: 'session_key' });
     
     if (error) throw error;
-    console.log(\`✓ Genie status updated: \${sessionKey}\`);
+    console.log(`✓ Genie status updated: ${sessionKey}`);
     return { ok: true };
   } catch (e) {
     console.error('updateGenieStatus error:', e.message);
@@ -258,6 +424,23 @@ async function updateGenieStatus(sessionKey, status) {
 
 async function addTask(task) {
   const id = task.id || Date.now().toString();
+  
+  // Local mock mode
+  if (LOCAL_MODE) {
+    mockData.tasks.push({
+      id,
+      title: task.title,
+      description: task.description || '',
+      column: task.column || 'inbox',
+      priority: task.priority || 'medium',
+      type: task.type || 'single',
+      created: new Date().toISOString().split('T')[0],
+      comments: []
+    });
+    addAuditLog({ type: 'add', taskId: id, taskTitle: task.title, author: 'michael' });
+    console.log(`[mock] Added task: ${id}`);
+    return id;
+  }
   
   const { error } = await supabaseAdmin.from('tasks').insert({
     id,
@@ -281,6 +464,23 @@ async function addTask(task) {
 async function updateTask(taskId, updates, author = 'unknown') {
   const safeId = sanitizeId(taskId);
   if (!safeId) throw new Error('Invalid taskId');
+  
+  // Local mock mode
+  if (LOCAL_MODE) {
+    const task = mockData.tasks.find(t => t.id === safeId);
+    if (task) {
+      const oldColumn = task.column;
+      if (updates.title !== undefined) task.title = updates.title;
+      if (updates.description !== undefined) task.description = updates.description;
+      if (updates.column !== undefined) task.column = updates.column;
+      if (updates.priority !== undefined) task.priority = updates.priority;
+      if (updates.column && updates.column !== oldColumn) {
+        addAuditLog({ type: 'move', taskId: safeId, taskTitle: task.title, from: oldColumn, to: updates.column, author });
+      }
+      console.log(`[mock] Updated task: ${safeId}`);
+    }
+    return;
+  }
   
   const { data: current } = await supabase
     .from('tasks')
@@ -325,6 +525,18 @@ async function deleteTask(taskId) {
   const safeId = sanitizeId(taskId);
   if (!safeId) throw new Error('Invalid taskId');
   
+  // Local mock mode
+  if (LOCAL_MODE) {
+    const idx = mockData.tasks.findIndex(t => t.id === safeId);
+    if (idx !== -1) {
+      const task = mockData.tasks[idx];
+      mockData.tasks.splice(idx, 1);
+      addAuditLog({ type: 'delete', taskId: safeId, taskTitle: task.title, author: 'michael' });
+      console.log(`[mock] Deleted task: ${safeId}`);
+    }
+    return;
+  }
+  
   const { data: task } = await supabase.from('tasks').select('title').eq('id', safeId).single();
   
   const { error } = await supabaseAdmin.from('tasks').delete().eq('id', safeId);
@@ -340,6 +552,17 @@ async function deleteTask(taskId) {
 async function addComment(taskId, comment) {
   const safeId = sanitizeId(taskId);
   if (!safeId) throw new Error('Invalid taskId');
+  
+  // Local mock mode
+  if (LOCAL_MODE) {
+    const task = mockData.tasks.find(t => t.id === safeId);
+    if (task) {
+      task.comments.push({ author: comment.author, text: comment.text, time: new Date().toISOString() });
+      addAuditLog({ type: 'comment', taskId: safeId, taskTitle: task.title, author: comment.author });
+      console.log(`[mock] Added comment to: ${safeId}`);
+    }
+    return;
+  }
   
   const { data: task } = await supabase.from('tasks').select('title').eq('id', safeId).single();
   
@@ -361,6 +584,16 @@ async function addComment(taskId, comment) {
 // ============ BULK SAVE WITH UPSERT ============
 
 async function bulkSaveTasks(frontendTasks) {
+  // Local mock mode - just replace the mock data
+  if (LOCAL_MODE) {
+    mockData.tasks = frontendTasks.map(t => ({
+      ...t,
+      comments: t.comments || []
+    }));
+    console.log(`[mock] Bulk saved ${frontendTasks.length} tasks`);
+    return;
+  }
+
   try {
     const [tasksResult, commentsResult] = await Promise.all([
       supabase.from('tasks').select('id,title,description,success_criteria,user_journey,column_name,priority,task_type,seen_at,needs_laptop'),
@@ -403,10 +636,10 @@ async function bulkSaveTasks(frontendTasks) {
       tasksToUpsert.push(taskRow);
       
       const dbComments = dbCommentMap.get(task.id) || [];
-      const dbCommentSet = new Set(dbComments.map(c => \`\${c.author}:\${c.text}\`));
+      const dbCommentSet = new Set(dbComments.map(c => `${c.author}:${c.text}`));
       
       for (const c of task.comments || []) {
-        const key = \`\${c.author}:\${c.text}\`;
+        const key = `${c.author}:${c.text}`;
         if (!dbCommentSet.has(key)) {
           commentsToInsert.push({ task_id: task.id, author: c.author, text: c.text });
           auditEntries.push({ type: 'comment', taskId: task.id, taskTitle: task.title, author: c.author });
@@ -432,7 +665,7 @@ async function bulkSaveTasks(frontendTasks) {
     }
 
     cache.invalidate();
-    console.log(\`[bulkSave] ✓ Upserted \${tasksToUpsert.length} tasks, \${commentsToInsert.length} comments\`);
+    console.log(`[bulkSave] ✓ Upserted ${tasksToUpsert.length} tasks, ${commentsToInsert.length} comments`);
   } catch (e) {
     console.error('[bulkSave] Error:', e.message);
     throw e;
@@ -452,10 +685,10 @@ async function backupToGist() {
       getHistory()
     ]);
 
-    const response = await fetch(\`https://api.github.com/gists/\${GIST_ID}\`, {
+    const response = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
       method: 'PATCH',
       headers: {
-        'Authorization': \`Bearer \${GITHUB_TOKEN}\`,
+        'Authorization': `Bearer ${GITHUB_TOKEN}`,
         'Content-Type': 'application/json',
         'Accept': 'application/vnd.github+json'
       },
@@ -474,10 +707,10 @@ async function backupToGist() {
     });
 
     if (!response.ok) {
-      throw new Error(\`GitHub API error: \${response.status}\`);
+      throw new Error(`GitHub API error: ${response.status}`);
     }
 
-    console.log(\`✓ Backed up to Gist: \${tasksData.tasks.length} tasks, \${historyData.length} history\`);
+    console.log(`✓ Backed up to Gist: ${tasksData.tasks.length} tasks, ${historyData.length} history`);
     return { ok: true, timestamp: new Date().toISOString(), tasks: tasksData.tasks.length };
   } catch (e) {
     console.error('Backup error:', e.message);
@@ -496,7 +729,7 @@ setInterval(async () => {
 const clients = new Set();
 
 function broadcastToClients(event, data) {
-  const message = \`event: \${event}\ndata: \${JSON.stringify(data)}\n\n\`;
+  const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const client of clients) {
     try {
       client.write(message);
@@ -507,6 +740,11 @@ function broadcastToClients(event, data) {
 }
 
 function setupRealtimeSubscription() {
+  if (LOCAL_MODE || !supabase) {
+    console.log('[realtime] Skipped - running in local mode');
+    return null;
+  }
+  
   const channel = supabase.channel('lamp-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
       console.log('[realtime] Task change:', payload.eventType);
@@ -523,7 +761,7 @@ function setupRealtimeSubscription() {
       broadcastToClients('genie', payload.new);
     })
     .subscribe((status) => {
-      console.log(\`[realtime] Subscription status: \${status}\`);
+      console.log(`[realtime] Subscription status: ${status}`);
     });
     
   return channel;
@@ -547,9 +785,9 @@ async function handleApiRequest(req, res, body) {
       clients.add(res);
       req.on('close', () => {
         clients.delete(res);
-        console.log(\`[sse] Client disconnected (\${clients.size} remaining)\`);
+        console.log(`[sse] Client disconnected (${clients.size} remaining)`);
       });
-      console.log(\`[sse] Client connected (\${clients.size} total)\`);
+      console.log(`[sse] Client connected (${clients.size} total)`);
       return;
     }
 
@@ -578,7 +816,7 @@ async function handleApiRequest(req, res, body) {
       
       if (req.url.startsWith('/api/history')) {
         const history = await getHistory();
-        const url = new URL(req.url, \`http://\${req.headers.host}\`);
+        const url = new URL(req.url, `http://${req.headers.host}`);
         const author = url.searchParams.get('author');
         let filtered = history;
         if (author && author !== 'all') {
@@ -692,7 +930,7 @@ async function handleApiRequest(req, res, body) {
           return;
         }
 
-        const prompt = \`A cute, celebratory cartoon for: "\${taskTitle}". Style: minimal, friendly, warm colors. No text.\`;
+        const prompt = `A cute, celebratory cartoon for: "${taskTitle}". Style: minimal, friendly, warm colors. No text.`;
         
         const requestData = JSON.stringify({
           model: 'dall-e-3',
@@ -708,7 +946,7 @@ async function handleApiRequest(req, res, body) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': \`Bearer \${apiKey}\`,
+            'Authorization': `Bearer ${apiKey}`,
             'Content-Length': Buffer.byteLength(requestData)
           }
         }, (apiRes) => {
@@ -754,9 +992,9 @@ async function handleApiRequest(req, res, body) {
         const audioBuffer = Buffer.from(audio, 'base64');
         const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substr(2);
         const formData = Buffer.concat([
-          Buffer.from(\`--\${boundary}\r\nContent-Disposition: form-data; name="file"; filename="audio.webm"\r\nContent-Type: audio/webm\r\n\r\n\`),
+          Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="audio.webm"\r\nContent-Type: audio/webm\r\n\r\n`),
           audioBuffer,
-          Buffer.from(\`\r\n--\${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n--\${boundary}--\r\n\`)
+          Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n--${boundary}--\r\n`)
         ]);
 
         const apiReq = https.request({
@@ -764,8 +1002,8 @@ async function handleApiRequest(req, res, body) {
           path: '/v1/audio/transcriptions',
           method: 'POST',
           headers: {
-            'Content-Type': \`multipart/form-data; boundary=\${boundary}\`,
-            'Authorization': \`Bearer \${apiKey}\`,
+            'Content-Type': `multipart/form-data; boundary=${boundary}`,
+            'Authorization': `Bearer ${apiKey}`,
             'Content-Length': formData.length
           }
         }, (apiRes) => {
@@ -845,16 +1083,16 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(\`\n🪔 The Lamp v3.0 running on port \${PORT}\`);
-  console.log(\`   Service: \${SERVICE_NAME}\`);
-  console.log(\`   Supabase: \${SUPABASE_URL.substring(0, 40)}...\`);
-  console.log(\`   Realtime: enabled\`);
-  console.log(\`   Cache TTL: \${cache.TTL}ms\`);
-  console.log(\`   Auto-backup: every 6 hours\`);
+  console.log(`\n🪔 The Lamp v3.0 running on port ${PORT}`);
+  console.log(`   Service: ${SERVICE_NAME}`);
+  console.log(`   Supabase: ${SUPABASE_URL.substring(0, 40)}...`);
+  console.log(`   Realtime: enabled`);
+  console.log(`   Cache TTL: ${cache.TTL}ms`);
+  console.log(`   Auto-backup: every 6 hours`);
   if (!GITHUB_TOKEN) {
-    console.log(\`   ⚠️  GITHUB_TOKEN not set - backups disabled\`);
+    console.log(`   ⚠️  GITHUB_TOKEN not set - backups disabled`);
   }
   if (!SUPABASE_SERVICE_KEY) {
-    console.log(\`   ⚠️  SUPABASE_SERVICE_KEY not set - using anon key for writes\`);
+    console.log(`   ⚠️  SUPABASE_SERVICE_KEY not set - using anon key for writes`);
   }
 });

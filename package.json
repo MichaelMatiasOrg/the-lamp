@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "start:local": "node server.js",
+    "start:local": "LOCAL_MODE=true node server.js",
     "backup": "curl -X POST http://localhost:3456/api/backup",
     "migrate": "node supabase/migrate.js",
     "deploy:staging": "./deploy.sh staging",
@@ -15,6 +15,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0"
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^17.2.3"
   }
 }
