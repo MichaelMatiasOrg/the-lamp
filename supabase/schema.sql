@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS tasks (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   seen_at BIGINT,
   needs_laptop BOOLEAN DEFAULT FALSE,
+  needs_mobile BOOLEAN DEFAULT FALSE,
+  archived BOOLEAN DEFAULT FALSE,
+  archived_at TIMESTAMPTZ,
   metadata JSONB
 );
 
@@ -41,6 +44,8 @@ CREATE TABLE IF NOT EXISTS genie_status (
 CREATE INDEX IF NOT EXISTS idx_tasks_column ON tasks(column_name);
 CREATE INDEX IF NOT EXISTS idx_tasks_type ON tasks(task_type);
 CREATE INDEX IF NOT EXISTS idx_tasks_updated ON tasks(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
+CREATE INDEX IF NOT EXISTS idx_tasks_archived ON tasks(archived);
 CREATE INDEX IF NOT EXISTS idx_comments_task ON comments(task_id);
 CREATE INDEX IF NOT EXISTS idx_comments_created ON comments(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_genie_status_updated ON genie_status(updated_at DESC);

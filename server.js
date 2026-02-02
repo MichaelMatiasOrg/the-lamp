@@ -45,7 +45,60 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml'
 };
 
-const COLUMNS = ['genie', 'inbox', 'todo', 'in_progress', 'review', 'done'];
+// API Authentication
+const API_TOKEN = process.env.API_TOKEN; // Optional: set for production security
+
+// CORS Configuration
+const ALLOWED_ORIGINS = [
+  'http://localhost:3456',
+  'http://127.0.0.1:3456',
+  'https://the-lamp.onrender.com',
+  'https://lamp.michaelmatias.com'
+];
+
+// Rate Limiting (simple in-memory, per IP)
+const rateLimits = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMITS = {
+  'generate-image': { max: 5, window: RATE_LIMIT_WINDOW },
+  'transcribe': { max: 20, window: RATE_LIMIT_WINDOW },
+  'default': { max: 100, window: RATE_LIMIT_WINDOW }
+};
+
+function checkRateLimit(ip, endpoint) {
+  const key = `${ip}:${endpoint}`;
+  const now = Date.now();
+  const limit = RATE_LIMITS[endpoint] || RATE_LIMITS.default;
+  
+  if (!rateLimits.has(key)) {
+    rateLimits.set(key, { count: 1, resetAt: now + limit.window });
+    return { allowed: true, remaining: limit.max - 1 };
+  }
+  
+  const entry = rateLimits.get(key);
+  if (now > entry.resetAt) {
+    entry.count = 1;
+    entry.resetAt = now + limit.window;
+    return { allowed: true, remaining: limit.max - 1 };
+  }
+  
+  if (entry.count >= limit.max) {
+    return { allowed: false, remaining: 0, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
+  }
+  
+  entry.count++;
+  return { allowed: true, remaining: limit.max - entry.count };
+}
+
+// Clean up old rate limit entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of rateLimits) {
+    if (now > entry.resetAt) rateLimits.delete(key);
+  }
+}, 5 * 60 * 1000);
+
+const COLUMNS = ['genie', 'inbox', 'in_progress', 'blocked', 'review', 'done'];
 
 // ============ IN-MEMORY CACHE ============
 const cache = {
@@ -289,6 +342,9 @@ async function getTasks() {
       created: t.created_at ? t.created_at.split('T')[0] : '',
       seenAt: t.seen_at,
       needsLaptop: t.needs_laptop || false,
+      needsMobile: t.needs_mobile || false,
+      archived: t.archived || false,
+      archivedAt: t.archived_at,
       comments: commentsByTask[t.id] || []
     }));
 
@@ -515,8 +571,13 @@ async function updateTask(taskId, updates, author = 'unknown') {
   if (updates.priority !== undefined) payload.priority = updates.priority;
   if (updates.type !== undefined) payload.task_type = updates.type;
   if (updates.needsLaptop !== undefined) payload.needs_laptop = updates.needsLaptop;
+  if (updates.needsMobile !== undefined) payload.needs_mobile = updates.needsMobile;
   if (updates.seenAt !== undefined) payload.seen_at = updates.seenAt;
   if (updates.column !== undefined) payload.column_name = updates.column;
+  if (updates.archived !== undefined) {
+    payload.archived = updates.archived;
+    if (updates.archived) payload.archived_at = new Date().toISOString();
+  }
   
   const { error } = await supabaseAdmin.from('tasks').update(payload).eq('id', safeId);
   if (error) throw error;
@@ -644,6 +705,9 @@ async function bulkSaveTasks(frontendTasks) {
         task_type: task.type || 'single',
         seen_at: task.seenAt || null,
         needs_laptop: task.needsLaptop || false,
+        needs_mobile: task.needsMobile || false,
+        archived: task.archived || false,
+        archived_at: task.archivedAt || null,
         updated_at: new Date().toISOString()
       };
       
@@ -790,7 +854,38 @@ setupRealtimeSubscription();
 
 // ============ REQUEST HANDLER ============
 
+// Helper to check API token for write operations
+function checkAuth(req, res) {
+  // Skip auth in local mode or if no token configured
+  if (LOCAL_MODE || !API_TOKEN) return true;
+  
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Authorization required', code: 'AUTH_REQUIRED' }));
+    return false;
+  }
+  
+  const token = authHeader.slice(7);
+  if (token !== API_TOKEN) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Invalid token', code: 'INVALID_TOKEN' }));
+    return false;
+  }
+  
+  return true;
+}
+
+// Helper to get client IP
+function getClientIP(req) {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+         req.socket?.remoteAddress || 
+         'unknown';
+}
+
 async function handleApiRequest(req, res, body) {
+  const clientIP = getClientIP(req);
+  
   try {
     if (req.method === 'GET' && req.url === '/api/events') {
       res.writeHead(200, {
@@ -815,12 +910,13 @@ async function handleApiRequest(req, res, body) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ 
           status: 'ok', 
-          version: '3.0.0',
+          version: '3.1.0',
           service: SERVICE_NAME,
           supabase: true,
           realtime: true,
           cache: cache.isValid(),
           clients: clients.size,
+          authEnabled: !!API_TOKEN,
           timestamp: new Date().toISOString()
         }));
         return;
@@ -933,6 +1029,7 @@ async function handleApiRequest(req, res, body) {
       }
       
       if (req.url === '/api/backup') {
+        if (!checkAuth(req, res)) return;
         const result = await backupToGist();
         res.writeHead(result.ok ? 200 : 500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
@@ -940,6 +1037,21 @@ async function handleApiRequest(req, res, body) {
       }
 
       if (req.url === '/api/generate-image') {
+        // Rate limit image generation (expensive API)
+        const rateCheck = checkRateLimit(clientIP, 'generate-image');
+        if (!rateCheck.allowed) {
+          res.writeHead(429, { 
+            'Content-Type': 'application/json',
+            'Retry-After': rateCheck.retryAfter.toString()
+          });
+          res.end(JSON.stringify({ 
+            error: 'Rate limit exceeded', 
+            retryAfter: rateCheck.retryAfter,
+            code: 'RATE_LIMITED'
+          }));
+          return;
+        }
+        
         const { taskTitle } = body;
         const apiKey = process.env.OPENAI_API_KEY;
         
@@ -999,6 +1111,21 @@ async function handleApiRequest(req, res, body) {
       }
 
       if (req.url === '/api/transcribe') {
+        // Rate limit transcription
+        const rateCheck = checkRateLimit(clientIP, 'transcribe');
+        if (!rateCheck.allowed) {
+          res.writeHead(429, { 
+            'Content-Type': 'application/json',
+            'Retry-After': rateCheck.retryAfter.toString()
+          });
+          res.end(JSON.stringify({ 
+            error: 'Rate limit exceeded', 
+            retryAfter: rateCheck.retryAfter,
+            code: 'RATE_LIMITED'
+          }));
+          return;
+        }
+        
         const { audio } = body;
         const apiKey = process.env.OPENAI_API_KEY;
         
@@ -1063,9 +1190,16 @@ async function handleApiRequest(req, res, body) {
 // ============ SERVER ============
 
 const server = http.createServer(async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // CORS: Allow specific origins or localhost in dev
+  const origin = req.headers.origin;
+  if (origin && (ALLOWED_ORIGINS.includes(origin) || LOCAL_MODE)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    // Same-origin requests (no Origin header)
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
