@@ -7,7 +7,11 @@
     "start": "node server-supabase.js",
     "start:redis": "node server.js",
     "migrate": "node supabase/migrate.js",
-    "test": "node test.js"
+    "test": "node test.js",
+    "test:staging": "node test-supabase.js staging",
+    "test:production": "node test-supabase.js production",
+    "deploy:staging": "./deploy.sh staging",
+    "deploy:production": "./deploy.sh production"
   },
   "engines": {
     "node": ">=18"
