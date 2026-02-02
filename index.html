@@ -1598,6 +1598,7 @@
         <button class="desktop-filter-btn" data-filter="mobile" onclick="setTypeFilter('mobile')">📱 Mobile</button>
       </div>
       <div class="desktop-actions">
+        <button class="desktop-action-btn secondary" id="mark-all-read-btn" onclick="markAllAsRead()" style="display:none;">✓ Mark All Read</button>
         <button class="desktop-action-btn" onclick="openNewTask()">🪄 New Wish</button>
         <button class="desktop-action-btn secondary" onclick="openLampFeedback()">🐛 Lamp Feedback</button>
       </div>
@@ -1875,6 +1876,12 @@
           desktopWishesBtn.insertAdjacentHTML('beforeend', badge);
         }
       }
+      
+      // Show/hide Mark All Read button
+      const markAllBtn = document.getElementById('mark-all-read-btn');
+      if (markAllBtn) {
+        markAllBtn.style.display = count > 0 ? 'inline-block' : 'none';
+      }
     }
     
     // Call this after rendering
@@ -1882,6 +1889,29 @@
       const count = getTotalUnreadCount();
       updateFaviconBadge(count);
       updateNavNotification(count);
+    }
+    
+    // Mark all tasks as read
+    async function markAllAsRead() {
+      const now = Date.now();
+      const tasksToUpdate = [];
+      
+      tasks.forEach(task => {
+        if (getUnreadGenieComments(task) > 0) {
+          task.seenAt = now;
+          tasksToUpdate.push(task.id);
+        }
+      });
+      
+      if (tasksToUpdate.length === 0) return;
+      
+      // Update UI immediately
+      renderAll();
+      
+      // Save each task's seenAt
+      for (const taskId of tasksToUpdate) {
+        await saveAction('update', taskId, { updates: { seenAt: now } });
+      }
     }
     
     // Make URLs clickable in text (XSS-safe)
