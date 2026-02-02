@@ -114,7 +114,7 @@ async function addHistoryEntry(entry) {
       // Fetch current, add new entry, save back
       let history = await getHistory();
       history.unshift(entry); // Add to front
-      history = history.slice(0, 500); // Keep last 500
+      history = history.slice(0, 1000); // Keep last 1000
       await redis.set(HISTORY_KEY, history);
     } catch (e) {
       console.error('History SET error:', e.message);
@@ -124,7 +124,7 @@ async function addHistoryEntry(entry) {
 
 // Handle task operations
 function handleTaskOperation(data, body) {
-  const { action, taskId, task, updates, comment } = body;
+  const { action, taskId, task, updates, comment, author: requestAuthor } = body;
   
   switch (action) {
     case 'add':
@@ -151,13 +151,21 @@ function handleTaskOperation(data, body) {
         Object.assign(toUpdate, updates);
         // Log column moves to history
         if (updates.column && updates.column !== oldColumn) {
+          // Determine author: use explicit author, or infer from move direction
+          let moveAuthor = requestAuthor || 'unknown';
+          if (moveAuthor === 'unknown') {
+            // Infer: only Michael can move to 'done', Genie typically moves to 'review' or 'in_progress'
+            if (updates.column === 'done') moveAuthor = 'michael';
+            else if (updates.column === 'review' && oldColumn === 'in_progress') moveAuthor = 'genie';
+            else if (updates.column === 'in_progress' && oldColumn === 'inbox') moveAuthor = 'genie';
+          }
           addHistoryEntry({
             type: 'move',
             taskId,
             taskTitle: toUpdate.title,
             from: oldColumn,
             to: updates.column,
-            author: 'unknown',
+            author: moveAuthor,
             time: new Date().toISOString()
           });
         }
