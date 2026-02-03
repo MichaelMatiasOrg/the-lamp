@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS comments (
   task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   author TEXT NOT NULL,
   text TEXT NOT NULL,
+  image_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

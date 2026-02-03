@@ -338,6 +338,7 @@ async function getTasks() {
       commentsByTask[c.task_id].push({
         author: c.author,
         text: c.text,
+        image: c.image_url || null,
         time: c.created_at
       });
     }
@@ -655,11 +656,41 @@ async function addComment(taskId, comment) {
   if (LOCAL_MODE) {
     const task = mockData.tasks.find(t => t.id === safeId);
     if (task) {
-      task.comments.push({ author: comment.author, text: comment.text, time: new Date().toISOString() });
+      task.comments.push({ author: comment.author, text: comment.text, image: comment.image, time: new Date().toISOString() });
       addAuditLog({ type: 'comment', taskId: safeId, taskTitle: task.title, author: comment.author });
       console.log(`[mock] Added comment to: ${safeId}`);
     }
     return;
+  }
+  
+  let imageUrl = null;
+  
+  // If comment has image data (base64), upload it first
+  if (comment.image && comment.image.startsWith('data:image')) {
+    try {
+      const base64Data = comment.image.replace(/^data:image\/\w+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      const filename = `comment-${safeId}-${Date.now()}.png`;
+      const filePath = `comments/${filename}`;
+      
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('images')
+        .upload(filePath, imageBuffer, {
+          contentType: 'image/png',
+          upsert: true
+        });
+      
+      if (!uploadError) {
+        const { data: urlData } = supabaseAdmin.storage
+          .from('images')
+          .getPublicUrl(filePath);
+        imageUrl = urlData.publicUrl;
+      } else {
+        console.error('Comment image upload failed:', uploadError);
+      }
+    } catch (e) {
+      console.error('Comment image processing failed:', e);
+    }
   }
   
   const { data: task } = await supabase.from('tasks').select('title').eq('id', safeId).single();
@@ -667,7 +698,8 @@ async function addComment(taskId, comment) {
   const { error } = await supabaseAdmin.from('comments').insert({
     task_id: safeId,
     author: comment.author,
-    text: comment.text
+    text: comment.text || '',
+    image_url: imageUrl
   });
   
   if (error) throw error;
